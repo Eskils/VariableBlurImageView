@@ -1,6 +1,6 @@
 //
 //  VariableBlurMetal.swift
-//  Dippel
+//
 //
 //  Created by Eskil Gjerde Sviggum on 05/12/2023.
 //
@@ -10,22 +10,51 @@ import Metal
 
 class VariableBlurMetal {
     
-    private static let variableBlurVerticalFunctionName = "variableBlurVertical"
     private lazy var device = MTLCreateSystemDefaultDevice()
+    
+    private static let variableBlurVerticalFunctionName = "variableBlurVertical"
     private lazy var variableBlurVerticalFunction: MetalFunction? = {
         device.flatMap {
             do {
                 return try MetalFunction.precompileMetalFunction(withName: Self.variableBlurVerticalFunctionName, device: $0)
             } catch {
                 #if DEBUG
-                print("Cannot precompile ordered dithering function with error: \(error)")
+                print("Cannot precompile metal function with error: \(error)")
                 #endif
                 return nil
             }
         }
     }()
     
-    func variableBlurVertical(image: CGImage, startPoint: Float, endPoint: Float, startRadius: Float, endRadius: Float) throws -> CGImage {
+    private static let variableBlurHorizontalFunctionName = "variableBlurHorizontal"
+    private lazy var variableBlurHorizontalFunction: MetalFunction? = {
+        device.flatMap {
+            do {
+                return try MetalFunction.precompileMetalFunction(withName: Self.variableBlurHorizontalFunctionName, device: $0)
+            } catch {
+                #if DEBUG
+                print("Cannot precompile metal function with error: \(error)")
+                #endif
+                return nil
+            }
+        }
+    }()
+    
+    private static let variableBlurFunctionName = "variableBlur"
+    private lazy var variableBlurFunction: MetalFunction? = {
+        device.flatMap {
+            do {
+                return try MetalFunction.precompileMetalFunction(withName: Self.variableBlurFunctionName, device: $0)
+            } catch {
+                #if DEBUG
+                print("Cannot precompile metal function with error: \(error)")
+                #endif
+                return nil
+            }
+        }
+    }()
+    
+    private func variableBlurGeneric(_ function: MetalFunction?, image: CGImage, bufferConfigurationHandler: @escaping (MTLDevice, MTLComputeCommandEncoder) -> Void) throws -> CGImage {
         guard let device else {
             throw MetalVariableBlurError.cannotCreateDevice
         }
@@ -41,21 +70,33 @@ class VariableBlurMetal {
 //        triggerProgrammaticCapture(device: device)
 //        #endif
         
-        guard let variableBlurVerticalFunction else {
+        guard let function else {
             throw MetalVariableBlurError.cannotPrecompileMetalFunction
         }
         
         let width = image.width
         let height = image.height
         
-        try variableBlurVerticalFunction.perform(
+        try function.perform(
             numWidth: width,
             numHeight: height
-        ) { commandEncoder in
+        ) { (commandEncoder, threadgroups) in
             commandEncoder.setTexture(inputTexture, index: 0)
             
             commandEncoder.setTexture(outputTexture, index: 1)
             
+            bufferConfigurationHandler(device, commandEncoder)
+        }
+        
+        guard let resultImage = makeImage(fromTexture: outputTexture) else {
+            throw MetalVariableBlurError.cannotMakeFinalImage
+        }
+        
+        return resultImage
+    }
+    
+    func variableBlurVertical(image: CGImage, startPoint: Float, endPoint: Float, startRadius: Float, endRadius: Float) throws -> CGImage {
+        try variableBlurGeneric(variableBlurVerticalFunction, image: image) { (device, commandEncoder) in
             // Start point
             var startPoint = startPoint
             let startPointBuffer = device.makeBuffer(bytes: &startPoint, length: MemoryLayout<Float>.size)
@@ -76,12 +117,54 @@ class VariableBlurMetal {
             let endRadiusBuffer = device.makeBuffer(bytes: &endRadius, length: MemoryLayout<Float>.size)
             commandEncoder.setBuffer(endRadiusBuffer, offset: 0, index: 3)
         }
-        
-        guard let resultImage = makeImage(fromTexture: outputTexture) else {
-            throw MetalVariableBlurError.cannotMakeFinalImage
+    }
+    
+    func variableBlurHorizontal(image: CGImage, startPoint: Float, endPoint: Float, startRadius: Float, endRadius: Float) throws -> CGImage {
+        try variableBlurGeneric(variableBlurHorizontalFunction, image: image) { (device, commandEncoder) in
+            // Start point
+            var startPoint = startPoint
+            let startPointBuffer = device.makeBuffer(bytes: &startPoint, length: MemoryLayout<Float>.size)
+            commandEncoder.setBuffer(startPointBuffer, offset: 0, index: 0)
+            
+            // End point
+            var endPoint = endPoint
+            let endPointBuffer = device.makeBuffer(bytes: &endPoint, length: MemoryLayout<Float>.size)
+            commandEncoder.setBuffer(endPointBuffer, offset: 0, index: 1)
+            
+            // Start radius
+            var startRadius = startRadius
+            let startRadiusBuffer = device.makeBuffer(bytes: &startRadius, length: MemoryLayout<Float>.size)
+            commandEncoder.setBuffer(startRadiusBuffer, offset: 0, index: 2)
+            
+            // End radius
+            var endRadius = endRadius
+            let endRadiusBuffer = device.makeBuffer(bytes: &endRadius, length: MemoryLayout<Float>.size)
+            commandEncoder.setBuffer(endRadiusBuffer, offset: 0, index: 3)
         }
-        
-        return resultImage
+    }
+    
+    func variableBlur(image: CGImage, startPoint: SIMD2<Float>, endPoint: SIMD2<Float>, startRadius: Float, endRadius: Float) throws -> CGImage {
+        try variableBlurGeneric(variableBlurFunction, image: image) { (device, commandEncoder) in
+            // Start point
+            var startPoint = startPoint
+            let startPointBuffer = device.makeBuffer(bytes: &startPoint, length: MemoryLayout<SIMD2<Float>>.size)
+            commandEncoder.setBuffer(startPointBuffer, offset: 0, index: 0)
+            
+            // End point
+            var endPoint = endPoint
+            let endPointBuffer = device.makeBuffer(bytes: &endPoint, length: MemoryLayout<SIMD2<Float>>.size)
+            commandEncoder.setBuffer(endPointBuffer, offset: 0, index: 1)
+            
+            // Start radius
+            var startRadius = startRadius
+            let startRadiusBuffer = device.makeBuffer(bytes: &startRadius, length: MemoryLayout<Float>.size)
+            commandEncoder.setBuffer(startRadiusBuffer, offset: 0, index: 2)
+            
+            // End radius
+            var endRadius = endRadius
+            let endRadiusBuffer = device.makeBuffer(bytes: &endRadius, length: MemoryLayout<Float>.size)
+            commandEncoder.setBuffer(endRadiusBuffer, offset: 0, index: 3)
+        }
     }
     
     private func makeInputTexture(withImage image: CGImage) -> MTLTexture? {

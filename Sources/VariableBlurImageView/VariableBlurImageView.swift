@@ -1,17 +1,53 @@
 //
 //  VariableBlurImageView.swift
-//  Dippel
+//
 //
 //  Created by Eskil Gjerde Sviggum on 05/12/2023.
 //
 
 import UIKit
 
-class VariableBlurImageView: UIImageView {
+open class VariableBlurImageView: UIImageView {
     
-    private let variableBlurMetal = VariableBlurMetal()
+    private let variableBlur = VariableBlur()
     
-    func setImage(_ image: UIImage, startPoint: CGFloat, endPoint: CGFloat, startRadius: CGFloat, endRadius: CGFloat) {
+    public func verticalVariableBlur(image: UIImage, startPoint: CGFloat, endPoint: CGFloat, startRadius: CGFloat, endRadius: CGFloat) {
+        transformAllVariations(ofImage: image) { cgImage in
+            try self.variableBlur.applyVerticalVariableBlur(
+                toImage:        cgImage,
+                startPoint:     startPoint,
+                endPoint:       endPoint,
+                startRadius:    startRadius,
+                endRadius:      endRadius
+            )
+        }
+    }
+    
+    public func horizontalVariableBlur(image: UIImage, startPoint: CGFloat, endPoint: CGFloat, startRadius: CGFloat, endRadius: CGFloat) {
+        transformAllVariations(ofImage: image) { cgImage in
+            try self.variableBlur.applyHorizontalVariableBlur(
+                toImage:        cgImage,
+                startPoint:     startPoint,
+                endPoint:       endPoint,
+                startRadius:    startRadius,
+                endRadius:      endRadius
+            )
+        }
+    }
+    
+    public func variableBlur(image: UIImage, startPoint: CGPoint, endPoint: CGPoint, startRadius: CGFloat, endRadius: CGFloat) {
+        transformAllVariations(ofImage: image) { cgImage in
+            try self.variableBlur.applyVariableBlur(
+                toImage:        cgImage,
+                startPoint:     startPoint,
+                endPoint:       endPoint,
+                startRadius:    startRadius,
+                endRadius:      endRadius
+            )
+        }
+    }
+    
+    private func transformAllVariations(ofImage image: UIImage, applyingTransform block: @escaping (CGImage) throws -> CGImage) {
         self.image = image
         DispatchQueue.global().async {
             do {
@@ -19,13 +55,11 @@ class VariableBlurImageView: UIImageView {
                 let imageVariations = self.getImageVariations(image: image)
                 let horizontalVariations = self.composeDoubleImageHorizontally(images: imageVariations)
                 
-                let blurredImage = try self.applyVariableBlur(
-                    toImage:        horizontalVariations,
-                    startPoint:     startPoint,
-                    endPoint:       endPoint,
-                    startRadius:    startRadius,
-                    endRadius:      endRadius
-                )
+                guard let cgImage = self.getCGImage(fromUIImage: horizontalVariations) else {
+                    throw VariableBlurImageViewError.cannotExtractCGImageFromProvidedImage
+                }
+                
+                let blurredImage = try block(cgImage)
                 
                 let imageWithVariations = self.doubleImageToUserInterfaceStyleVariations(cgImage: blurredImage, size: imageSize) ?? UIImage(cgImage: blurredImage)
                 
@@ -33,7 +67,9 @@ class VariableBlurImageView: UIImageView {
                     self.image = imageWithVariations
                 }
             } catch {
-                Logger.log("Could not apply variable blur to image: \(error)")
+                #if DEBUG
+                print("Could not apply variable blur to image: \(error)")
+                #endif
                 self.image = image
             }
         }
@@ -88,7 +124,7 @@ class VariableBlurImageView: UIImageView {
         return UIImage(cgImage: image)
     }
     
-    func doubleImageToUserInterfaceStyleVariations(cgImage: CGImage, size: CGSize) -> UIImage? {
+    private func doubleImageToUserInterfaceStyleVariations(cgImage: CGImage, size: CGSize) -> UIImage? {
         let context = CIContext()
         let ciImage = CIImage(cgImage: cgImage)
         
@@ -108,20 +144,6 @@ class VariableBlurImageView: UIImageView {
         imageAsset.register(UIImage(cgImage: darkImage), with: darkMode)
         
         return imageAsset.image(with: .current)
-    }
-    
-    private func applyVariableBlur(toImage image: UIImage, startPoint: CGFloat, endPoint: CGFloat, startRadius: CGFloat, endRadius: CGFloat) throws -> CGImage {
-        guard let cgImage = getCGImage(fromUIImage: image) else {
-            throw VariableBlurImageViewError.cannotExtractCGImageFromProvidedImage
-        }
-        
-        return try variableBlurMetal.variableBlurVertical(
-            image:          cgImage,
-            startPoint:     Float(startPoint),
-            endPoint:       Float(endPoint),
-            startRadius:    Float(startRadius),
-            endRadius:      Float(endRadius)
-        )
     }
     
     private func getCGImage(fromUIImage image: UIImage) -> CGImage? {
