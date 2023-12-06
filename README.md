@@ -12,7 +12,7 @@ Framework for adding variable blur, or progressive blur, to images on iOS and Ma
    * [Installation](#installation)
    * [Usage](#usage)
       * [VariableBlurImageView](#variableblurimageview-1)
-      * [VariableBlur](#variableblur)
+      * [VariableBlurEngine](#variableblurengine)
    * [Roadmap](#roadmap)
    * [Project Organization](#project-organization)
       * [Implementing new blur types](#implementing-new-blur-types)
@@ -110,18 +110,18 @@ public func variableBlur(
 )
 ```
 
-### VariableBlur
+### VariableBlurEngine
 
-VariableBlur is an object used to apply progressive blur to CGImages.
+VariableBlurEngine is an object used to apply progressive blur to CGImages.
 
 You provide a CGImage, start point, end point, and their respective blur radiuses. A new CGImage is returned with the variable blur effect.
 
 #### Example
 
 ```swift
-let variableBlur = VariableBlur()
+let variableBlurEngine = VariableBlurEngine()
 let leavesImage = UIImage(resource: .leaves)
-let blurredImage = variableBlur.applyVerticalVariableBlur(
+let blurredImage = variableBlurEngine.applyVerticalVariableBlur(
     toImage: leavesImage, 
     startPoint: 0, 
     endPoint: leavesImage.size.height / 4, 
@@ -205,7 +205,7 @@ func testVerticalVariableBlur() throws {
             inputImageName: inputImageName,
             expectedImageName: "\(inputImageName)-VerticalBlur...",
             afterPerformingImageOperations: { input in
-                try variableBlur.applyVerticalVariableBlur(
+                try variableBlurEngine.applyVerticalVariableBlur(
                     toImage: input,
                     startPoint: 0,
                     endPoint: CGFloat(input.height / 2),
@@ -224,7 +224,7 @@ Measuring performance can be done with the `provideInputImage(inputImageName:)` 
 func testPerformanceOfVerticalVariableBlur() throws {
     let inputImage = try provideInputImage(inputImageName: inputImageName)
     measure {
-        _ = try! variableBlur.applyVerticalVariableBlur(
+        _ = try! variableBlurEngine.applyVerticalVariableBlur(
             toImage: inputImage,
             startPoint: 0,
             endPoint: CGFloat(inputImage.height / 2),
@@ -245,7 +245,7 @@ Use the `from(image:named:performingOperations:)` method on OutputImage, and add
 // Vertical blur
 OutputImage
     .from(image: inputImage, named: "\(name)-Vertical...") { input in
-        try variableBlur.applyVerticalVariableBlur(
+        try variableBlurEngine.applyVerticalVariableBlur(
             toImage: input,
             startPoint: 0,
             endPoint: CGFloat(input.height / 2),

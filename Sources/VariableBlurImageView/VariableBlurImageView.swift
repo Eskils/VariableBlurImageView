@@ -9,11 +9,11 @@ import UIKit
 
 open class VariableBlurImageView: UIImageView {
     
-    private let variableBlur = VariableBlur()
+    private let variableBlurEngine = VariableBlurEngine()
     
     public func verticalVariableBlur(image: UIImage, startPoint: CGFloat, endPoint: CGFloat, startRadius: CGFloat, endRadius: CGFloat) {
         transformAllVariations(ofImage: image) { cgImage in
-            try self.variableBlur.applyVerticalVariableBlur(
+            try self.variableBlurEngine.applyVerticalVariableBlur(
                 toImage:        cgImage,
                 startPoint:     startPoint,
                 endPoint:       endPoint,
@@ -25,7 +25,7 @@ open class VariableBlurImageView: UIImageView {
     
     public func horizontalVariableBlur(image: UIImage, startPoint: CGFloat, endPoint: CGFloat, startRadius: CGFloat, endRadius: CGFloat) {
         transformAllVariations(ofImage: image) { cgImage in
-            try self.variableBlur.applyHorizontalVariableBlur(
+            try self.variableBlurEngine.applyHorizontalVariableBlur(
                 toImage:        cgImage,
                 startPoint:     startPoint,
                 endPoint:       endPoint,
@@ -37,7 +37,7 @@ open class VariableBlurImageView: UIImageView {
     
     public func variableBlur(image: UIImage, startPoint: CGPoint, endPoint: CGPoint, startRadius: CGFloat, endRadius: CGFloat) {
         transformAllVariations(ofImage: image) { cgImage in
-            try self.variableBlur.applyVariableBlur(
+            try self.variableBlurEngine.applyVariableBlur(
                 toImage:        cgImage,
                 startPoint:     startPoint,
                 endPoint:       endPoint,

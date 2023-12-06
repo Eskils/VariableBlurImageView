@@ -1,5 +1,5 @@
 //
-//  VariableBlur.swift
+//  VariableBlurEngine.swift
 //
 //
 //  Created by Eskil Gjerde Sviggum on 06/12/2023.
@@ -8,7 +8,7 @@
 import Foundation
 import CoreGraphics
 
-public struct VariableBlur {
+public struct VariableBlurEngine {
     
     private let variableBlurMetal = VariableBlurMetal()
     

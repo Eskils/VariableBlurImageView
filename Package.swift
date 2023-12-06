@@ -21,8 +21,7 @@ let package = Package(
             name: "VariableBlurImageView"),
         .testTarget(
             name: "VariableBlurImageViewTests",
-            dependencies: ["VariableBlurImageView"],
-            resources: [.copy("InputImages/VariableBlurTestImageAlt1.png")]),
+            dependencies: ["VariableBlurImageView"]),
         
         .executableTarget(name: "GenerateTestImages",
                 dependencies: ["VariableBlurImageView"])
