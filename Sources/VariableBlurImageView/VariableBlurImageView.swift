@@ -12,7 +12,7 @@ open class VariableBlurImageView: UIImageView {
     private let variableBlurEngine = VariableBlurEngine()
     
     public func verticalVariableBlur(image: UIImage, startPoint: CGFloat, endPoint: CGFloat, startRadius: CGFloat, endRadius: CGFloat) {
-        transformAllVariations(ofImage: image) { cgImage in
+        transformAllVariations(ofImage: image, variationTransformMode: .sequential) { cgImage in
             try self.variableBlurEngine.applyVerticalVariableBlur(
                 toImage:        cgImage,
                 startPoint:     startPoint,
@@ -24,7 +24,7 @@ open class VariableBlurImageView: UIImageView {
     }
     
     public func horizontalVariableBlur(image: UIImage, startPoint: CGFloat, endPoint: CGFloat, startRadius: CGFloat, endRadius: CGFloat) {
-        transformAllVariations(ofImage: image) { cgImage in
+        transformAllVariations(ofImage: image, variationTransformMode: .sequential) { cgImage in
             try self.variableBlurEngine.applyHorizontalVariableBlur(
                 toImage:        cgImage,
                 startPoint:     startPoint,
@@ -36,7 +36,7 @@ open class VariableBlurImageView: UIImageView {
     }
     
     public func variableBlur(image: UIImage, startPoint: CGPoint, endPoint: CGPoint, startRadius: CGFloat, endRadius: CGFloat) {
-        transformAllVariations(ofImage: image) { cgImage in
+        transformAllVariations(ofImage: image, variationTransformMode: .sequential) { cgImage in
             try self.variableBlurEngine.applyVariableBlur(
                 toImage:        cgImage,
                 startPoint:     startPoint,
@@ -47,21 +47,49 @@ open class VariableBlurImageView: UIImageView {
         }
     }
     
-    private func transformAllVariations(ofImage image: UIImage, applyingTransform block: @escaping (CGImage) throws -> CGImage) {
+    private func transformAllVariations(ofImage image: UIImage, variationTransformMode: VariationTansformMode, applyingTransform block: @escaping (CGImage) throws -> CGImage) {
         self.image = image
+        
+        let currentStyle = traitCollection.userInterfaceStyle
+        
+        let imageVariations = self.getImageVariations(image: image, currentStyleFirst: variationTransformMode.currentStyleFirst)
+        
         DispatchQueue.global().async {
             do {
                 let imageSize = image.size
-                let imageVariations = self.getImageVariations(image: image)
-                let horizontalVariations = self.composeDoubleImageHorizontally(images: imageVariations)
                 
-                guard let cgImage = self.getCGImage(fromUIImage: horizontalVariations) else {
+                let cgImagesOfVariations = imageVariations.compactMap { self.getCGImage(fromUIImage: $0) }
+                
+                guard cgImagesOfVariations.count == imageVariations.count else {
                     throw VariableBlurImageViewError.cannotExtractCGImageFromProvidedImage
                 }
                 
-                let blurredImage = try block(cgImage)
+                let blurredImageVariations: [CGImage]
+                switch variationTransformMode {
+                case .tile(let tileMode):
+                    let imageTiler = ImageTiler(tileMode: tileMode)
+                    guard let tiledImage = imageTiler.tile(images: cgImagesOfVariations) else {
+                        throw VariableBlurImageViewError.cannotTileImage
+                    }
+                    let blurredImage = try block(tiledImage)
+                    blurredImageVariations = imageTiler.getComponentImages(image: blurredImage, desiredSize: imageSize)
+                case .sequential:
+                    var variations = [CGImage]()
+                    for (i, cgImage) in cgImagesOfVariations.enumerated() {
+                        let blurredImage = try block(cgImage)
+                        // Set image when first result is ready
+                        if i == 0 {
+                            DispatchQueue.main.async {
+                                self.image = UIImage(cgImage: blurredImage)
+                            }
+                        }
+                        
+                        variations.append(blurredImage)
+                    }
+                    blurredImageVariations = variations
+                }
                 
-                let imageWithVariations = self.doubleImageToUserInterfaceStyleVariations(cgImage: blurredImage, size: imageSize) ?? UIImage(cgImage: blurredImage)
+                let imageWithVariations = self.makeSingleImageWithStyleVariations(fromImages: blurredImageVariations, currentStyleFirst: variationTransformMode.currentStyleFirst, currentStyle: currentStyle)
                 
                 DispatchQueue.main.async {
                     self.image = imageWithVariations
@@ -70,12 +98,14 @@ open class VariableBlurImageView: UIImageView {
                 #if DEBUG
                 print("Could not apply variable blur to image: \(error)")
                 #endif
-                self.image = image
+                DispatchQueue.main.async {
+                    self.image = image
+                }
             }
         }
     }
     
-    private func getImageVariations(image: UIImage) -> [UIImage] {
+    private func getImageVariations(image: UIImage, currentStyleFirst: Bool) -> [UIImage] {
         guard let imageAsset = image.imageAsset else {
             return [image]
         }
@@ -90,50 +120,25 @@ open class VariableBlurImageView: UIImageView {
             return [image]
         }
         
+        // Return the current user interface style first.
+        let currentStyle = traitCollection.userInterfaceStyle
+        
+        if currentStyleFirst && currentStyle == .dark {
+            return [darkImage, lightImage,]
+        }
+        
         return [lightImage, darkImage]
     }
     
-    private func composeDoubleImageHorizontally(images: [UIImage]) -> UIImage {
-        if images.isEmpty {
-            return UIImage()
-        }
-        
-        if images.count == 1 {
-            return images.first!
-        }
-        
-        let singleImageSize = images.first!.size
-        
-        let cgContext = CGContext(data: nil, width: images.count * Int(singleImageSize.width), height: Int(singleImageSize.height), bitsPerComponent: 8, bytesPerRow: 0, space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)
-        
-        guard let cgContext else {
-            return images.first!
-        }
-        
-        for (i, image) in images.enumerated() {
-            if let cgImage = image.cgImage {
-                let rect = CGRect(x: CGFloat(i) * singleImageSize.width, y: 0, width: singleImageSize.width, height: singleImageSize.height)
-                cgContext.draw(cgImage, in: rect, byTiling: false)
-            }
-        }
-        
-        guard let image = cgContext.makeImage() else {
-            return images.first!
-        }
-        
-        return UIImage(cgImage: image)
-    }
-    
-    private func doubleImageToUserInterfaceStyleVariations(cgImage: CGImage, size: CGSize) -> UIImage? {
-        let context = CIContext()
-        let ciImage = CIImage(cgImage: cgImage)
-        
-        guard
-            let lightImage = context.createCGImage(ciImage, from: CGRect(origin: .zero, size: size)),
-            let darkImage = context.createCGImage(ciImage, from: CGRect(origin: CGPoint(x: size.width, y: 0), size: size))
-        else {
+    private func makeSingleImageWithStyleVariations(fromImages images: [CGImage], currentStyleFirst: Bool, currentStyle: UIUserInterfaceStyle) -> UIImage? {
+        guard images.count >= 2 else {
             return nil
         }
+        
+        let darkFirst = currentStyleFirst && currentStyle == .dark
+        
+        let lightImage = darkFirst ? images[1] : images[0]
+        let darkImage = darkFirst ? images[0] : images[1]
         
         let imageAsset = UIImageAsset()
         
@@ -158,10 +163,28 @@ open class VariableBlurImageView: UIImageView {
         return nil
     }
     
+    enum VariationTansformMode {
+        /// Tiles the image variations into one image and performs one transform
+        case tile(tileMode: ImageTiler.ImageTileMode)
+        
+        /// Performs the transform on each image variation sequentially
+        case sequential
+        
+        var currentStyleFirst: Bool {
+            switch self {
+            case .tile(_):
+                return false
+            case .sequential:
+                return true
+            }
+        }
+    }
+    
 }
 
 extension VariableBlurImageView {
     enum VariableBlurImageViewError: String, Error {
         case cannotExtractCGImageFromProvidedImage
+        case cannotTileImage
     }
 }
