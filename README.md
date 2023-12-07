@@ -46,14 +46,15 @@ let package = Package(
 
 ## Usage
 
-This frameworks provides an UIImageView subclass and a class to apply variable blur to CGImages.
+This frameworks provides an UIImageView subclass and a class to apply variable blur to CGImages. The following types are supported: 
 
-The following types are supported: 
-  - Vertical  
-  <img src="Documentation/VariableBlurTestImage-VerticalBlur-(0,20)-to-(50h,0).png" width="256" alt="Vertical progressive blur">
-  - Horizontal  
-  <img src="Documentation/VariableBlurTestImage-HorizontalBlur-(0,20)-to-(50w,0).png" width="256" alt="Horizontal progressive blur">
-  - Between two points  
+#### Vertical  
+<img src="Documentation/VariableBlurTestImage-VerticalBlur-(0,20)-to-(50h,0).png" width="256" alt="Vertical progressive blur">
+
+#### Horizontal  
+<img src="Documentation/VariableBlurTestImage-HorizontalBlur-(0,20)-to-(50w,0).png" width="256" alt="Horizontal progressive blur">
+
+#### Between two points  
 <img src="Documentation/VariableBlurTestImage-VariableBlur-((10w,15h),20)-to-((60w,40h),0).png" width="256" alt="Progressive blur between two points">
 
 ### VariableBlurImageView
