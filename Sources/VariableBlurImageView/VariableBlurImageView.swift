@@ -11,6 +11,14 @@ open class VariableBlurImageView: UIImageView {
     
     private let variableBlurEngine = VariableBlurEngine()
     
+    /// Adds a vertical variable blur to your image.
+    /// This method works asynchronously.
+    /// - Parameters:
+    ///   - image: The image to blur.
+    ///   - startPoint: The vertical start point. In UIKit coordinates.
+    ///   - endPoint: The vertical end point. In UIKit coordinates.
+    ///   - startRadius: The blur radius at the start point.
+    ///   - endRadius: The blur radius ar the end point.
     public func verticalVariableBlur(image: UIImage, startPoint: CGFloat, endPoint: CGFloat, startRadius: CGFloat, endRadius: CGFloat) {
         transformAllVariations(ofImage: image, variationTransformMode: .sequential) { cgImage in
             try self.variableBlurEngine.applyVerticalVariableBlur(
@@ -23,6 +31,14 @@ open class VariableBlurImageView: UIImageView {
         }
     }
     
+    /// Adds a horizontal variable blur to your image.
+    /// This method works asyncronously.
+    /// - Parameters:
+    ///   - image: The image to blur.
+    ///   - startPoint: The horizontal start point. In UIKit coordinates.
+    ///   - endPoint: The horizontal end point. In UIKit coordinates.
+    ///   - startRadius: The blur radius at the start point.
+    ///   - endRadius: The blur radius ar the end point.
     public func horizontalVariableBlur(image: UIImage, startPoint: CGFloat, endPoint: CGFloat, startRadius: CGFloat, endRadius: CGFloat) {
         transformAllVariations(ofImage: image, variationTransformMode: .sequential) { cgImage in
             try self.variableBlurEngine.applyHorizontalVariableBlur(
@@ -35,6 +51,14 @@ open class VariableBlurImageView: UIImageView {
         }
     }
     
+    /// Adds a variable blur between two points to your image.
+    /// This method works asyncronously.
+    /// - Parameters:
+    ///   - image: The image to blur.
+    ///   - startPoint: The start point. In UIKit coordinates.
+    ///   - endPoint: The end point. In UIKit coordinates.
+    ///   - startRadius: The blur radius at the start point.
+    ///   - endRadius: The blur radius ar the end point.
     public func variableBlur(image: UIImage, startPoint: CGPoint, endPoint: CGPoint, startRadius: CGFloat, endRadius: CGFloat) {
         transformAllVariations(ofImage: image, variationTransformMode: .sequential) { cgImage in
             try self.variableBlurEngine.applyVariableBlur(
