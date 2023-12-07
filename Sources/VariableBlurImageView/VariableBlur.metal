@@ -26,8 +26,8 @@ half lerp(half a, half b, half t) {
     return (1-t) * a + t * b;
 }
 
-float3 colorForBlurAtPixel(uint2 gid, texture2d<float, access::read> textureIn, float radius) {
-    float3 colorOut = 0;
+float4 colorForBlurAtPixel(uint2 gid, texture2d<float, access::read> textureIn, float radius) {
+    float4 colorOut = 0;
     
     float fMatrixSize = M_2xPI * radius;
     const int matrixSize = (int)ceil(fMatrixSize);
@@ -40,7 +40,7 @@ float3 colorForBlurAtPixel(uint2 gid, texture2d<float, access::read> textureIn, 
             int xI = clamp((int)gid.x + x - midOffset, 0, (int)textureIn.get_width() - 1);
             int yI = clamp((int)gid.y + y - midOffset, 0, (int)textureIn.get_height() - 1);
             
-            float3 colorIn = textureIn.read(uint2(xI, yI)).xyz;
+            float4 colorIn = textureIn.read(uint2(xI, yI));
             half weight = gaussian2D(radius, x - midOffset, y - midOffset);
             colorOut += colorIn * weight;
         }
@@ -69,9 +69,9 @@ kernel void variableBlurVertical(
     half t = clamp(((half)gid.y - (half)startRadius) / dRange, 0.0h, 1.0h);
     half radius = max(lerp(startRadius, endRadius, t), 1.0h);
     
-    float3 colorOut = colorForBlurAtPixel(gid, textureIn, radius);
+    float4 colorOut = colorForBlurAtPixel(gid, textureIn, radius);
     
-    textureOut.write(float4(colorOut, 1.0f), gid);
+    textureOut.write(colorOut, gid);
 }
 
 kernel void variableBlurHorizontal(
@@ -94,9 +94,13 @@ kernel void variableBlurHorizontal(
     half t = clamp(((half)gid.x - (half)startRadius) / dRange, 0.0h, 1.0h);
     half radius = max(lerp(startRadius, endRadius, t), 1.0h);
     
-    float3 colorOut = colorForBlurAtPixel(gid, textureIn, radius);
+    float4 colorOut = colorForBlurAtPixel(gid, textureIn, radius);
     
-    textureOut.write(float4(colorOut, 1.0f), gid);
+    textureOut.write(colorOut, gid);
+}
+
+half2 normalOfGradient(half2 gradient) {
+    return half2(gradient.y, -gradient.x);
 }
 
 kernel void variableBlur(
@@ -126,7 +130,7 @@ kernel void variableBlur(
     half tClamped = clamp(t, 0.0h, 1.0h);
     half radius = max(lerp(startRadius, endRadius, tClamped), 1.0h);
     
-    float3 colorOut = colorForBlurAtPixel(gid, textureIn, radius);
+    float4 colorOut = colorForBlurAtPixel(gid, textureIn, radius);
     
-    textureOut.write(float4(colorOut, 1.0f), gid);
+    textureOut.write(colorOut, gid);
 }

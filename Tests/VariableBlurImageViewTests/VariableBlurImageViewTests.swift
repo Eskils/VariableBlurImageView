@@ -106,6 +106,63 @@ final class VariableBlurImageViewTests: XCTestCase {
         }
     }
     
+    func testVerticalVariableBlurWithAlpha() throws {
+        let inputImageName = "TestAlpha"
+        XCTAssertTrue(
+            try isEqual(
+                inputImageName: inputImageName,
+                expectedImageName: "\(inputImageName)-VerticalBlur-(0,20)-to-(50h,0)",
+                afterPerformingImageOperations: { input in
+                    try variableBlurEngine.applyVerticalVariableBlur(
+                        toImage: input,
+                        startPoint: 0,
+                        endPoint: CGFloat(input.height / 2),
+                        startRadius: 20,
+                        endRadius: 0
+                    )
+                }
+            )
+        )
+    }
+    
+    func testHorizontalVariableBlurWithAlpha() throws {
+        let inputImageName = "TestAlpha"
+        XCTAssertTrue(
+            try isEqual(
+                inputImageName: inputImageName,
+                expectedImageName: "\(inputImageName)-HorizontalBlur-(0,20)-to-(50w,0)",
+                afterPerformingImageOperations: { input in
+                    try variableBlurEngine.applyHorizontalVariableBlur(
+                        toImage: input,
+                        startPoint: 0,
+                        endPoint: CGFloat(input.width / 2),
+                        startRadius: 20,
+                        endRadius: 0
+                    )
+                }
+            )
+        )
+    }
+    
+    func testVariableBlurWithAlpha() throws {
+        let inputImageName = "TestAlpha"
+        XCTAssertTrue(
+            try isEqual(
+                inputImageName: inputImageName,
+                expectedImageName: "\(inputImageName)-VariableBlur-((10w,15h),20)-to-((60w,40h),0)",
+                afterPerformingImageOperations: { input in
+                    try variableBlurEngine.applyVariableBlur(
+                        toImage: input,
+                        startPoint: CGPoint(x: CGFloat(input.width) * 0.1, y: CGFloat(input.height) * 0.15),
+                        endPoint: CGPoint(x: CGFloat(input.width) * 0.6, y: CGFloat(input.height) * 0.4),
+                        startRadius: 20,
+                        endRadius: 0
+                    )
+                }
+            )
+        )
+    }
+    
 }
 
 extension VariableBlurImageViewTests {
@@ -122,21 +179,27 @@ extension VariableBlurImageViewTests {
         
         let producedOutputsPath = testsDirectory + "/ProducedOutputs/\(expectedImageName).png"
         try write(image: blurredImage, toPath: producedOutputsPath)
+        let producedOutputImage = try image(atPath: producedOutputsPath)
         
         let expectedImagePath = testsDirectory + "/ExpectedOutputs/\(expectedImageName).png"
         let expectedImage = try image(atPath: expectedImagePath)
         
         let colorspace = CGColorSpaceCreateDeviceRGB()
-        let convertedBlurred = convertColorspace(ofImage: blurredImage, toColorSpace: colorspace)
+        let convertedBlurred = convertColorspace(ofImage: producedOutputImage, toColorSpace: colorspace)
         let convertedExpected = convertColorspace(ofImage: expectedImage, toColorSpace: colorspace)
         
-        return convertedBlurred?.dataProvider?.data == convertedExpected?.dataProvider?.data
+        let isEqual = convertedBlurred?.dataProvider?.data == convertedExpected?.dataProvider?.data
+        
+        if !isEqual {
+            print("Image \(String(describing: convertedBlurred)) does not match expected \(String(describing: convertedExpected))")
+        }
+        
+        return isEqual
     }
     
     func convertColorspace(ofImage image: CGImage, toColorSpace colorSpace: CGColorSpace) -> CGImage? {
         let rect = CGRect(origin: .zero, size: CGSize(width: image.width, height: image.height))
-        let bitmapInfo = CGBitmapInfo(rawValue: (CGBitmapInfo.byteOrder32Big.rawValue | CGImageAlphaInfo.premultipliedLast.rawValue))
-        let context = CGContext(data: nil, width: Int(rect.width), height: Int(rect.height), bitsPerComponent: 8, bytesPerRow: 0, space: colorSpace, bitmapInfo: bitmapInfo.rawValue)!
+        let context = CGContext(data: nil, width: Int(rect.width), height: Int(rect.height), bitsPerComponent: 8, bytesPerRow: 0, space: colorSpace, bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
         context.draw(image, in: rect)
         let image = context.makeImage()
         return image
