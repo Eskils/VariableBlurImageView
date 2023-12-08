@@ -22,19 +22,20 @@ half gaussian(half sigma, half x) {
     return expo;
 }
 
-float4 colorForBlurAtPixel(half2 gid, texture2d<float, access::read> textureIn, half radius) {
+float4 colorForBlurAtPixel(half2 gid, texture2d<float, access::read_write> textureIn, half radius, ushort2 size) {
     float4 colorOut = 0;
+    half2 hSize = (half2)size;
     
     const half fMatrixSize = M_2xPI * radius;
     const int matrixSize = (int)ceil(fMatrixSize);
     const half midOffset = (half)(matrixSize / 2);
     
-    half recip = 1 / (radius * fMatrixSize);
+    half recip = radius * fMatrixSize;
     
     for (int y = 0; y < matrixSize; y++) {
         for (int x = 0; x < matrixSize; x++) {
-            ushort xI = (ushort)clamp((half)gid.x + x - midOffset, 0.0h, (half)textureIn.get_width() - 1.0h);
-            ushort yI = (ushort)clamp((half)gid.y + y - midOffset, 0.0h, (half)textureIn.get_height() - 1.0h);
+            ushort xI = (ushort)clamp((half)gid.x + x - midOffset, 0.0h, hSize.x - 1.0h);
+            ushort yI = (ushort)clamp((half)gid.y + y - midOffset, 0.0h, hSize.y - 1.0h);
             
             float4 colorIn = textureIn.read(ushort2(xI, yI));
             half weight = gaussian2D(radius, x - midOffset, y - midOffset);
@@ -42,22 +43,23 @@ float4 colorForBlurAtPixel(half2 gid, texture2d<float, access::read> textureIn, 
         }
     }
     
-    return recip * colorOut;
+    return colorOut / recip;
 }
 
 kernel void variableBlurVertical(
-    texture2d<float, access::read> textureIn [[texture(0)]],
-    texture2d<float, access::write> textureOut [[texture(1)]],
+    texture2d<float, access::read_write> texture [[texture(0)]],
     constant float &startPoint     [[buffer(0)]],
     constant float &endPoint       [[buffer(1)]],
     constant float &startRadius    [[buffer(2)]],
     constant float &endRadius      [[buffer(3)]],
+    constant ushort2 &size          [[buffer(4)]],
     ushort2 gid [[thread_position_in_grid]]
 ) {
-    half2 hGid = (half2)gid;
+    const half2 hGid = (half2)gid;
+    const ushort2 out = ushort2(gid.x + size.x, gid.y);
     
     if (hGid.y < startPoint || hGid.y >= endPoint) {
-        textureOut.write(textureIn.read(gid), gid);
+        texture.write(texture.read(gid), out);
         return;
     }
     
@@ -65,24 +67,25 @@ kernel void variableBlurVertical(
     half t = clamp((hGid.y - (half)startRadius) / dRange, 0.0h, 1.0h);
     half radius = max(mix((half)startRadius, (half)endRadius, t), 1.0h);
     
-    float4 colorOut = (float4)colorForBlurAtPixel(hGid, textureIn, radius);
+    float4 colorOut = (float4)colorForBlurAtPixel(hGid, texture, radius, size);
     
-    textureOut.write(colorOut, gid);
+    texture.write(colorOut, out);
 }
 
 kernel void variableBlurHorizontal(
-    texture2d<float, access::read> textureIn [[texture(0)]],
-    texture2d<float, access::write> textureOut [[texture(1)]],
+    texture2d<float, access::read_write> texture [[texture(0)]],
     constant float& startPoint     [[buffer(0)]],
     constant float& endPoint       [[buffer(1)]],
     constant float& startRadius    [[buffer(2)]],
     constant float& endRadius      [[buffer(3)]],
+    constant ushort2 &size          [[buffer(4)]],
     ushort2 gid [[thread_position_in_grid]]
 ) {
+    const half2 hGid = (half2)gid;
+    const ushort2 out = ushort2(gid.x + size.x, gid.y);
     
-    half2 hGid = (half2)gid;
     if (hGid.x < startPoint || hGid.x >= endPoint) {
-        textureOut.write(textureIn.read(gid), gid);
+        texture.write(texture.read(gid), out);
         return;
     }
     
@@ -90,9 +93,9 @@ kernel void variableBlurHorizontal(
     half t = clamp((hGid.x - (half)startRadius) / dRange, 0.0h, 1.0h);
     half radius = max(mix((half)startRadius, (half)endRadius, t), 1.0h);
     
-    float4 colorOut = (float4)colorForBlurAtPixel(hGid, textureIn, radius);
+    float4 colorOut = (float4)colorForBlurAtPixel(hGid, texture, radius, size);
     
-    textureOut.write(colorOut, gid);
+    texture.write(colorOut, out);
 }
 
 half2 normalOfGradient(half2 gradient) {
@@ -100,17 +103,19 @@ half2 normalOfGradient(half2 gradient) {
 }
 
 kernel void variableBlur(
-    texture2d<float, access::read> textureIn [[texture(0)]],
-    texture2d<float, access::write> textureOut [[texture(1)]],
+    texture2d<float, access::read_write> texture [[texture(0)]],
     constant float2& startPoint    [[buffer(0)]],
     constant float2& endPoint      [[buffer(1)]],
     constant float& startRadius    [[buffer(2)]],
     constant float& endRadius      [[buffer(3)]],
+    constant ushort2 &size          [[buffer(4)]],
     ushort2 gid [[thread_position_in_grid]]
 ) {
-    half2 hGid = (half2)gid;
-    half2 hStartPoint = (half2)startPoint;
-    half2 hEndPoint = (half2)endPoint;
+    const half2 hGid = (half2)gid;
+    const ushort2 out = ushort2(gid.x + size.x, gid.y);
+    
+    const half2 hStartPoint = (half2)startPoint;
+    const half2 hEndPoint = (half2)endPoint;
     
     half dx = (hEndPoint.x - hStartPoint.x);
     half dy = (hEndPoint.y - hStartPoint.y);
@@ -123,14 +128,14 @@ kernel void variableBlur(
     half t = d.x / dRange;
     
     if (t < 0.0h || t > 1.0h) {
-        textureOut.write(textureIn.read(gid), gid);
+        texture.write(texture.read(gid), out);
         return;
     }
     
     half tClamped = clamp(t, 0.0h, 1.0h);
     half radius = max(mix((half)startRadius, (half)endRadius, tClamped), 1.0h);
     
-    float4 colorOut = (float4)colorForBlurAtPixel(hGid, textureIn, radius);
+    float4 colorOut = (float4)colorForBlurAtPixel(hGid, texture, radius, size);
     
-    textureOut.write(colorOut, gid);
+    texture.write(colorOut, out);
 }

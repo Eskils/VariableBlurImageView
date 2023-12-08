@@ -54,14 +54,21 @@ class VariableBlurMetal {
         }
     }()
     
+    lazy var sizeBuffer         = device?.makeBuffer(length: MemoryLayout<SIMD2<UInt16>>.size)
+    lazy var startPoint1DBuffer = device?.makeBuffer(length: MemoryLayout<Float>.size)
+    lazy var endPoint1DBuffer   = device?.makeBuffer(length: MemoryLayout<Float>.size)
+    lazy var startPoint2DBuffer = device?.makeBuffer(length: MemoryLayout<SIMD2<Float>>.size)
+    lazy var endPoint2DBuffer   = device?.makeBuffer(length: MemoryLayout<SIMD2<Float>>.size)
+    lazy var startRadiusBuffer  = device?.makeBuffer(length: MemoryLayout<Float>.size)
+    lazy var endRadiusBuffer    = device?.makeBuffer(length: MemoryLayout<Float>.size)
+    
     private func variableBlurGeneric(_ function: MetalFunction?, image: CGImage, bufferConfigurationHandler: @escaping (MTLDevice, MTLComputeCommandEncoder) -> Void) throws -> CGImage {
-        guard let device else {
+        guard let device, let sizeBuffer else {
             throw MetalVariableBlurError.cannotCreateDevice
         }
         
         guard
-            let inputTexture = makeInputTexture(withImage: image),
-            let outputTexture = makeOutputTexture(forImage: image)
+            let texture = makeInputOutputTexture(withImage: image)
         else {
             throw MetalVariableBlurError.cannotMakeTexture
         }
@@ -81,14 +88,15 @@ class VariableBlurMetal {
             numWidth: width,
             numHeight: height
         ) { (commandEncoder, threadgroups) in
-            commandEncoder.setTexture(inputTexture, index: 0)
+            commandEncoder.setTexture(texture, index: 0)
             
-            commandEncoder.setTexture(outputTexture, index: 1)
+            sizeBuffer.contents().assumingMemoryBound(to: SIMD2<UInt16>.self).pointee = SIMD2<UInt16>(x: UInt16(image.width), y: UInt16(image.height))
+            commandEncoder.setBuffer(sizeBuffer, offset: 0, index: 4)
             
             bufferConfigurationHandler(device, commandEncoder)
         }
         
-        guard let resultImage = makeImage(fromTexture: outputTexture) else {
+        guard let resultImage = makeImage(fromTexture: texture, width: width, height: height) else {
             throw MetalVariableBlurError.cannotMakeFinalImage
         }
         
@@ -96,78 +104,78 @@ class VariableBlurMetal {
     }
     
     func variableBlurVertical(image: CGImage, startPoint: Float, endPoint: Float, startRadius: Float, endRadius: Float) throws -> CGImage {
-        try variableBlurGeneric(variableBlurVerticalFunction, image: image) { (device, commandEncoder) in
+        guard let startPoint1DBuffer, let endPoint1DBuffer, let startRadiusBuffer, let endRadiusBuffer else {
+            throw MetalVariableBlurError.cannotCreateDevice
+        }
+        
+        return try variableBlurGeneric(variableBlurVerticalFunction, image: image) { (device, commandEncoder) in
             // Start point
-            var startPoint = startPoint
-            let startPointBuffer = device.makeBuffer(bytes: &startPoint, length: MemoryLayout<Float>.size)
-            commandEncoder.setBuffer(startPointBuffer, offset: 0, index: 0)
+            startPoint1DBuffer.contents().assumingMemoryBound(to: Float.self).pointee = startPoint
+            commandEncoder.setBuffer(startPoint1DBuffer, offset: 0, index: 0)
             
             // End point
-            var endPoint = endPoint
-            let endPointBuffer = device.makeBuffer(bytes: &endPoint, length: MemoryLayout<Float>.size)
-            commandEncoder.setBuffer(endPointBuffer, offset: 0, index: 1)
+            endPoint1DBuffer.contents().assumingMemoryBound(to: Float.self).pointee = endPoint
+            commandEncoder.setBuffer(endPoint1DBuffer, offset: 0, index: 1)
             
             // Start radius
-            var startRadius = startRadius
-            let startRadiusBuffer = device.makeBuffer(bytes: &startRadius, length: MemoryLayout<Float>.size)
+            startRadiusBuffer.contents().assumingMemoryBound(to: Float.self).pointee = startRadius
             commandEncoder.setBuffer(startRadiusBuffer, offset: 0, index: 2)
             
             // End radius
-            var endRadius = endRadius
-            let endRadiusBuffer = device.makeBuffer(bytes: &endRadius, length: MemoryLayout<Float>.size)
+            endRadiusBuffer.contents().assumingMemoryBound(to: Float.self).pointee = endRadius
             commandEncoder.setBuffer(endRadiusBuffer, offset: 0, index: 3)
         }
     }
     
     func variableBlurHorizontal(image: CGImage, startPoint: Float, endPoint: Float, startRadius: Float, endRadius: Float) throws -> CGImage {
-        try variableBlurGeneric(variableBlurHorizontalFunction, image: image) { (device, commandEncoder) in
+        guard let startPoint1DBuffer, let endPoint1DBuffer, let startRadiusBuffer, let endRadiusBuffer else {
+            throw MetalVariableBlurError.cannotCreateDevice
+        }
+        
+        return try variableBlurGeneric(variableBlurHorizontalFunction, image: image) { (device, commandEncoder) in
             // Start point
-            var startPoint = startPoint
-            let startPointBuffer = device.makeBuffer(bytes: &startPoint, length: MemoryLayout<Float>.size)
-            commandEncoder.setBuffer(startPointBuffer, offset: 0, index: 0)
+            startPoint1DBuffer.contents().assumingMemoryBound(to: Float.self).pointee = startPoint
+            commandEncoder.setBuffer(startPoint1DBuffer, offset: 0, index: 0)
             
             // End point
-            var endPoint = endPoint
-            let endPointBuffer = device.makeBuffer(bytes: &endPoint, length: MemoryLayout<Float>.size)
-            commandEncoder.setBuffer(endPointBuffer, offset: 0, index: 1)
+            endPoint1DBuffer.contents().assumingMemoryBound(to: Float.self).pointee = endPoint
+            commandEncoder.setBuffer(endPoint1DBuffer, offset: 0, index: 1)
             
             // Start radius
-            var startRadius = startRadius
-            let startRadiusBuffer = device.makeBuffer(bytes: &startRadius, length: MemoryLayout<Float>.size)
+            startRadiusBuffer.contents().assumingMemoryBound(to: Float.self).pointee = startRadius
             commandEncoder.setBuffer(startRadiusBuffer, offset: 0, index: 2)
             
             // End radius
-            var endRadius = endRadius
-            let endRadiusBuffer = device.makeBuffer(bytes: &endRadius, length: MemoryLayout<Float>.size)
+            endRadiusBuffer.contents().assumingMemoryBound(to: Float.self).pointee = endRadius
             commandEncoder.setBuffer(endRadiusBuffer, offset: 0, index: 3)
         }
     }
     
     func variableBlur(image: CGImage, startPoint: SIMD2<Float>, endPoint: SIMD2<Float>, startRadius: Float, endRadius: Float) throws -> CGImage {
-        try variableBlurGeneric(variableBlurFunction, image: image) { (device, commandEncoder) in
+        guard let startPoint2DBuffer, let endPoint2DBuffer, let startRadiusBuffer, let endRadiusBuffer else {
+            throw MetalVariableBlurError.cannotCreateDevice
+        }
+        
+        return try variableBlurGeneric(variableBlurFunction, image: image) { (device, commandEncoder) in
             // Start point
-            var startPoint = startPoint
-            let startPointBuffer = device.makeBuffer(bytes: &startPoint, length: MemoryLayout<SIMD2<Float>>.size)
-            commandEncoder.setBuffer(startPointBuffer, offset: 0, index: 0)
+            startPoint2DBuffer.contents().assumingMemoryBound(to: SIMD2<Float>.self).pointee = startPoint
+            commandEncoder.setBuffer(startPoint2DBuffer, offset: 0, index: 0)
             
             // End point
-            var endPoint = endPoint
-            let endPointBuffer = device.makeBuffer(bytes: &endPoint, length: MemoryLayout<SIMD2<Float>>.size)
-            commandEncoder.setBuffer(endPointBuffer, offset: 0, index: 1)
+            endPoint2DBuffer.contents().assumingMemoryBound(to: SIMD2<Float>.self).pointee = endPoint
+            commandEncoder.setBuffer(endPoint2DBuffer, offset: 0, index: 1)
             
             // Start radius
-            var startRadius = startRadius
-            let startRadiusBuffer = device.makeBuffer(bytes: &startRadius, length: MemoryLayout<Float>.size)
+            startRadiusBuffer.contents().assumingMemoryBound(to: Float.self).pointee = startRadius
             commandEncoder.setBuffer(startRadiusBuffer, offset: 0, index: 2)
             
             // End radius
-            var endRadius = endRadius
-            let endRadiusBuffer = device.makeBuffer(bytes: &endRadius, length: MemoryLayout<Float>.size)
+            endRadiusBuffer.contents().assumingMemoryBound(to: Float.self).pointee = endRadius
             commandEncoder.setBuffer(endRadiusBuffer, offset: 0, index: 3)
         }
     }
     
-    private func makeInputTexture(withImage image: CGImage) -> MTLTexture? {
+    private func makeInputOutputTexture(withImage image: CGImage) -> MTLTexture? {
         guard let device else {
             return nil
         }
@@ -175,7 +183,7 @@ class VariableBlurMetal {
         let width = image.width
         let height = image.height
         
-        guard let texture = MetalFunction.makeTexture(width: width, height: height, device: device) else {
+        guard let texture = MetalFunction.makeTexture(width: 2 * width, height: height, device: device) else {
             return nil
         }
         
@@ -207,11 +215,11 @@ class VariableBlurMetal {
         return MetalFunction.makeTexture(width: image.width, height: image.height, device: device)
     }
     
-    private func makeImage(fromTexture texture: MTLTexture) -> CGImage? {
+    private func makeImage(fromTexture texture: MTLTexture, width: Int, height: Int) -> CGImage? {
         let context = CGContext(
             data: nil,
-            width: texture.width,
-            height: texture.height,
+            width: width,
+            height: height,
             bitsPerComponent: 8,
             bytesPerRow: 0,
             space: CGColorSpaceCreateDeviceRGB(),
@@ -229,8 +237,8 @@ class VariableBlurMetal {
             imageBytes,
             bytesPerRow: context.bytesPerRow,
             from: MTLRegion(
-                origin: MTLOrigin(x: 0, y: 0, z: 0),
-                size: MTLSize(width: texture.width, height: texture.height, depth: 1)
+                origin: MTLOrigin(x: width, y: 0, z: 0),
+                size: MTLSize(width: width, height: height, depth: 1)
             ),
             mipmapLevel: 0
         )
