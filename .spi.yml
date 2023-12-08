@@ -1,5 +1,5 @@
 version: 1
 builder:
   configs:
-    - documentation_targets: [Target1, Target2]
+    - documentation_targets: [VariableBlurImageView]
       platform: ios
