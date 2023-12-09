@@ -11,10 +11,10 @@ Add variable blur to images in UIKit, AppKit, and SwiftUI. Works on Apple platfo
 Demo apps for SwiftUI, UIKit and AppKit are available under [Documentation](/Documentation/).
 
 ## Table of contents
-   * [Installation](#installation)
+   * [Possible kinds](#possible-kinds)
    * [Requirements](#requirements)
+   * [Installation](#installation)
    * [Usage](#usage)
-      * [Possible kinds](#possible-kinds)
       * [Working with UIKit and AppKit](#working-with-uikit-and-appkit)
       * [Working with SwiftUI](#working-with-swiftui)
       * [Working with CGImages](#working-with-cgimages)
@@ -25,6 +25,19 @@ Demo apps for SwiftUI, UIKit and AppKit are available under [Documentation](/Doc
       * [Supplying tests](#supplying-tests)
       * [Generate images to use in the test](#generate-images-to-use-in-the-test)
    * [Contributing to VariableBlurImageView](#contributing-to-variableblurimageview)
+
+## Possible kinds
+ 
+| Vertical | Horizontal | Between two points | Gradient | Multiple blurs |
+|----------|------------|--------------------|----------|----------------|
+![Vertical progressive blur](Documentation/VariableBlurTestImage-VerticalBlur.png) | ![Horizontal progressive blur](Documentation/VariableBlurTestImage-HorizontalBlur.png) | ![Progressive blur between two points](Documentation/VariableBlurTestImage-VariableBlur.png) | ![Progressive blur from the lightness in a gradient image](Documentation/VariableBlurTestImage-GradientBlur.png) | ![Multiple progressive blurs](Documentation/VariableBlurTestImage-MultipleBlurs.png)
+
+## Requirements
+- Swift 5.9
+- iOS 13.0
+- macOS 11.0
+- tvOS 13.0
+- macCatalyst 13.0
 
 ## Installation
 To use this package in a SwiftPM project, you need to set it up as a package dependency:
@@ -52,24 +65,11 @@ let package = Package(
 )
 ```
 
-## Requirements
-- Swift 5.9
-- iOS 13.0
-- macOS 11.0
-- tvOS 13.0
-- macCatalyst 13.0
-
 ## Usage
 
 This frameworks provides subclasses for UIImageView, and NSImageView, in addition to SwiftUI views and modifiers to apply variable blur to images.
 
 There is also a class to apply variable blur to CGImages.
-
-### Possible kinds
- 
-| Vertical | Horizontal | Between two points | Gradient | Multiple blurs |
-|----------|------------|--------------------|----------|----------------|
-![Vertical progressive blur](Documentation/VariableBlurTestImage-VerticalBlur.png) | ![Horizontal progressive blur](Documentation/VariableBlurTestImage-HorizontalBlur.png) | ![Progressive blur between two points](Documentation/VariableBlurTestImage-VariableBlur.png) | ![Progressive blur from the lightness in a gradient image](Documentation/VariableBlurTestImage-GradientBlur.png) | ![Multiple progressive blurs](Documentation/VariableBlurTestImage-MultipleBlurs.png)
 
 ### Working with UIKit and AppKit
 `VariableBlurImageView` is a subclass of `UIImageView` / `NSImageView` which asynchronously applies the wanted progressive blur.
@@ -96,13 +96,13 @@ imageView.verticalVariableBlur(
 
 ```swift
 /// Adds a vertical variable blur to your image.
-VariableBlurImageView.verticalVariableBlur(image:startPoint:endPoint:startRadius:endRadius)
+VariableBlurImageView.verticalVariableBlur(image:startPoint:endPoint:startRadius:endRadius:)
 
 /// Adds a horizontal variable blur to your image.
-VariableBlurImageView.horizontalVariableBlur(image:startPoint:endPoint:startRadius:endRadius)
+VariableBlurImageView.horizontalVariableBlur(image:startPoint:endPoint:startRadius:endRadius:)
 
 // Adds a variable blur between two points to your image.
-VariableBlurImageView.variableBlur(image:startPoint:endPoint:startRadius:endRadius)
+VariableBlurImageView.variableBlur(image:startPoint:endPoint:startRadius:endRadius:)
 
 /// Adds a variable blur following the lightness in the provided gradient image.
 VariableBlurImageView.gradientBlur(image:gradient:maxRadius:)
@@ -140,13 +140,13 @@ var body: some View {
 
 ```swift
 /// Adds a vertical variable blur to your image.
-VerticalVariableBlurImage(image:startPoint:endPoint:startRadius:endRadius)
+VerticalVariableBlurImage(image:startPoint:endPoint:startRadius:endRadius:)
 
 /// Adds a horizontal variable blur to your image.
-HorizontalVariableBlurImage(image:startPoint:endPoint:startRadius:endRadius)
+HorizontalVariableBlurImage(image:startPoint:endPoint:startRadius:endRadius:)
 
 // Adds a variable blur between two points to your image.
-VariableBlurImage(image:startPoint:endPoint:startRadius:endRadius)
+VariableBlurImage(image:startPoint:endPoint:startRadius:endRadius:)
 
 /// Adds a variable blur following the lightness in the provided gradient image.
 GradientBlurImage(image:gradient:maxRadius:)
@@ -159,13 +159,13 @@ MultipleBlursImage(image:descriptions:)
 
 ```swift
 /// Adds a vertical variable blur to your image.
-Image.verticalVariableBlur(startPoint:endPoint:startRadius:endRadius)
+Image.verticalVariableBlur(startPoint:endPoint:startRadius:endRadius:)
 
 /// Adds a horizontal variable blur to your image.
-Image.horizontalVariableBlur(startPoint:endPoint:startRadius:endRadius)
+Image.horizontalVariableBlur(startPoint:endPoint:startRadius:endRadius:)
 
 // Adds a variable blur between two points to your image.
-Image.variableBlur(startPoint:endPoint:startRadius:endRadius)
+Image.variableBlur(startPoint:endPoint:startRadius:endRadius:)
 
 /// Adds a variable blur following the lightness in the provided gradient image.
 Image.gradientBlur(gradient:maxRadius:)
@@ -200,13 +200,13 @@ let blurredImage = variableBlurEngine.applyVerticalVariableBlur(
 
 ```swift
 /// Adds a vertical variable blur to your image.
-VariableBlurEngine.applyVerticalVariableBlur(image:startPoint:endPoint:startRadius:endRadius)
+VariableBlurEngine.applyVerticalVariableBlur(image:startPoint:endPoint:startRadius:endRadius:)
 
 /// Adds a horizontal variable blur to your image.
-VariableBlurEngine.applyHorizontalVariableBlur(image:startPoint:endPoint:startRadius:endRadius)
+VariableBlurEngine.applyHorizontalVariableBlur(image:startPoint:endPoint:startRadius:endRadius:)
 
 // Adds a variable blur between two points to your image.
-VariableBlurEngine.applyVariableBlur(image:startPoint:endPoint:startRadius:endRadius)
+VariableBlurEngine.applyVariableBlur(image:startPoint:endPoint:startRadius:endRadius:)
 
 /// Adds a variable blur following the lightness in the provided gradient image.
 VariableBlurEngine.applyGradientVariableBlur(image:gradient:maxRadius:)
