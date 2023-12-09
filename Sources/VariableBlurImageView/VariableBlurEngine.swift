@@ -71,7 +71,7 @@ public struct VariableBlurEngine {
     ///   - image: The image to blur.
     ///   - gradient: The image describing the blur radius in terms of lightness. Preferrably a grayscale image.
     ///   - maxRadius: The max blur radius. Fully white corresponds to this radius, while black corresponds to 0.
-    public func applyGradientVariabeBlur(toImage image: CGImage, withGradient gradient: CGImage, maxRadius: CGFloat) throws -> CGImage {
+    public func applyGradientVariableBlur(toImage image: CGImage, withGradient gradient: CGImage, maxRadius: CGFloat) throws -> CGImage {
         return try variableBlurMetal.gradientVariableBlur(
             image: image,
             gradientImage: gradient,
@@ -80,10 +80,11 @@ public struct VariableBlurEngine {
     }
     
     /// Adds multiple variable blurs as provided by an array of start/ent points and start/end radiuses.
+    /// If the blurs overlap, the last blur will overrule.
     /// - Parameters:
     ///   - image: The image to blur.
     ///   - descriptions: An array of structures describing start/ent points and start/end radiuses.
-    public func applyMultipleVariabeBlurs(toImage image: CGImage, withDescriptions descriptions: [VariableBlurDescription]) throws -> CGImage {
+    public func applyMultipleVariableBlurs(toImage image: CGImage, withDescriptions descriptions: [VariableBlurDescription]) throws -> CGImage {
         return try variableBlurMetal.multipleVariableBlur(
             image: image,
             descriptions: descriptions.map { $0.toMetalDescription() }

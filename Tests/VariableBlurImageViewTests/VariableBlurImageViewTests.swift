@@ -105,6 +105,87 @@ final class VariableBlurImageViewTests: XCTestCase {
         }
     }
     
+    func testGradientBlur() throws {
+        let gradientImage = try provideInputImage(inputImageName: "TestAlpha")
+        
+        XCTAssertTrue(
+            try isEqual(
+                inputImageName: inputImageName,
+                expectedImageName: "\(inputImageName)-GradientBlur-20",
+                afterPerformingImageOperations: { input in
+                    try variableBlurEngine.applyGradientVariableBlur(
+                        toImage: input,
+                        withGradient: gradientImage,
+                        maxRadius: 20
+                    )
+                }
+            )
+        )
+    }
+    
+    func testPerformanceOfGradientBlur() throws {
+        let inputImage = try provideInputImage(inputImageName: inputImageName)
+        let gradientImage = try provideInputImage(inputImageName: "TestAlpha")
+        
+        measure {
+            _ = try! variableBlurEngine.applyGradientVariableBlur(
+                toImage: inputImage,
+                withGradient: gradientImage,
+                maxRadius: 20
+            )
+        }
+    }
+    
+    func testMultipleBlurs() throws {
+        XCTAssertTrue(
+            try isEqual(
+                inputImageName: inputImageName,
+                expectedImageName: "\(inputImageName)-MultipleBlurs-20",
+                afterPerformingImageOperations: { input in
+                    try variableBlurEngine.applyMultipleVariableBlurs(
+                        toImage: input,
+                        withDescriptions: [
+                            VariableBlurDescription(startPoint: CGPoint(x: 0, y: 0), endPoint: CGPoint(x: 0, y: CGFloat(input.height) * 0.4), startRadius: 20, endRadius: 0),
+                            VariableBlurDescription(startPoint: CGPoint(x: 0, y: CGFloat(input.height)), endPoint: CGPoint(x: 0, y: CGFloat(input.height) * 0.5), startRadius: 20, endRadius: 0),
+                        ]
+                    )
+                }
+            )
+        )
+    }
+    
+    func testPerformanceOfMultipleBlurs() throws {
+        let inputImage = try provideInputImage(inputImageName: inputImageName)
+        
+        measure {
+            _ = try! variableBlurEngine.applyMultipleVariableBlurs(
+                toImage: inputImage,
+                withDescriptions: [
+                    VariableBlurDescription(startPoint: CGPoint(x: 0, y: 0), endPoint: CGPoint(x: 0, y: CGFloat(inputImage.height) * 0.4), startRadius: 20, endRadius: 0),
+                    VariableBlurDescription(startPoint: CGPoint(x: 0, y: CGFloat(inputImage.height)), endPoint: CGPoint(x: 0, y: CGFloat(inputImage.height) * 0.5), startRadius: 20, endRadius: 0),
+                ]
+            )
+        }
+    }
+    
+    func testMultipleBlursWithOverlap() throws {
+        XCTAssertTrue(
+            try isEqual(
+                inputImageName: inputImageName,
+                expectedImageName: "\(inputImageName)-MultipleBlurs-WithOverlap",
+                afterPerformingImageOperations: { input in
+                    try variableBlurEngine.applyMultipleVariableBlurs(
+                        toImage: input,
+                        withDescriptions: [
+                            VariableBlurDescription(startPoint: CGPoint(x: 0, y: 0), endPoint: CGPoint(x: 0, y: CGFloat(input.height) * 0.6), startRadius: 20, endRadius: 0),
+                            VariableBlurDescription(startPoint: CGPoint(x: 0, y: CGFloat(input.height)), endPoint: CGPoint(x: 0, y: CGFloat(input.height) * 0.4), startRadius: 20, endRadius: 0),
+                        ]
+                    )
+                }
+            )
+        )
+    }
+    
     func testVerticalVariableBlurWithAlpha() throws {
         let inputImageName = "TestAlpha"
         XCTAssertTrue(

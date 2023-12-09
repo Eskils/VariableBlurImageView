@@ -56,7 +56,7 @@ struct GenerateImages {
         OutputImage
             .from(image: inputImage, named: "\(name)-GradientBlur-20") { input in
                 let gradientImage = try GenerateTestImages.image(atPath: inputURL.appendingPathComponent("TestAlpha.png").path)
-                return try variableBlurEngine.applyGradientVariabeBlur(
+                return try variableBlurEngine.applyGradientVariableBlur(
                     toImage: input,
                     withGradient: gradientImage,
                     maxRadius: 20
@@ -67,11 +67,24 @@ struct GenerateImages {
         // MultipleBlurs
         OutputImage
             .from(image: inputImage, named: "\(name)-MultipleBlurs-20") { input in
-                return try variableBlurEngine.applyMultipleVariabeBlurs(
+                return try variableBlurEngine.applyMultipleVariableBlurs(
                     toImage: input,
                     withDescriptions: [
                         VariableBlurDescription(startPoint: CGPoint(x: 0, y: 0), endPoint: CGPoint(x: 0, y: CGFloat(input.height) * 0.4), startRadius: 20, endRadius: 0),
                         VariableBlurDescription(startPoint: CGPoint(x: 0, y: CGFloat(input.height)), endPoint: CGPoint(x: 0, y: CGFloat(input.height) * 0.5), startRadius: 20, endRadius: 0),
+                    ]
+                )
+            }?
+            .adding(to: &outputImages)
+        
+        // MultipleBlurs with overlap
+        OutputImage
+            .from(image: inputImage, named: "\(name)-MultipleBlurs-WithOverlap") { input in
+                return try variableBlurEngine.applyMultipleVariableBlurs(
+                    toImage: input,
+                    withDescriptions: [
+                        VariableBlurDescription(startPoint: CGPoint(x: 0, y: 0), endPoint: CGPoint(x: 0, y: CGFloat(input.height) * 0.6), startRadius: 20, endRadius: 0),
+                        VariableBlurDescription(startPoint: CGPoint(x: 0, y: CGFloat(input.height)), endPoint: CGPoint(x: 0, y: CGFloat(input.height) * 0.4), startRadius: 20, endRadius: 0),
                     ]
                 )
             }?

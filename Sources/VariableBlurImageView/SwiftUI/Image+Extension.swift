@@ -118,6 +118,7 @@ extension Image {
     }
     
     /// Adds multiple variable blurs as provided by an array of start/ent points and start/end radiuses.
+    /// If the blurs overlap, the last blur will overrule.
     /// This method works asyncronously.
     /// Image variations are not supported.
     /// - Parameters:

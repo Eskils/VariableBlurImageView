@@ -166,6 +166,7 @@ public struct MultipleBlursImage: View {
     
     #if canImport(UIKit)
     /// Adds multiple variable blurs as provided by an array of start/ent points and start/end radiuses.
+    /// If the blurs overlap, the last blur will overrule.
     /// This method works asyncronously.
     /// - Parameters:
     ///   - image: The image to blur.
@@ -176,6 +177,7 @@ public struct MultipleBlursImage: View {
     }
     #elseif canImport(AppKit)
     /// Adds multiple variable blurs as provided by an array of start/ent points and start/end radiuses.
+    /// If the blurs overlap, the last blur will overrule.
     /// This method works asyncronously.
     /// - Parameters:
     ///   - image: The image to blur.

@@ -197,6 +197,7 @@ open class VariableBlurImageView: NSImageView {
     }
     
     /// Adds multiple variable blurs as provided by an array of start/ent points and start/end radiuses.
+    /// If the blurs overlap, the last blur will overrule.
     /// This method works asyncronously.
     /// - Parameters:
     ///   - image: The image to blur.
@@ -270,7 +271,7 @@ extension VariableBlurImageView {
         }
         
         transformAllVariations(ofImage: image, variationTransformMode: .sequential) { cgImage in
-            try self.variableBlurEngine.applyGradientVariabeBlur(
+            try self.variableBlurEngine.applyGradientVariableBlur(
                 toImage:        cgImage,
                 withGradient:   cgGradientImage,
                 maxRadius:      maxRadius
@@ -280,7 +281,7 @@ extension VariableBlurImageView {
     
     func multipleVariableBlursImpl(image: CPImage, descriptions: [VariableBlurDescription]) {
         transformAllVariations(ofImage: image, variationTransformMode: .sequential) { cgImage in
-            try self.variableBlurEngine.applyMultipleVariabeBlurs(
+            try self.variableBlurEngine.applyMultipleVariableBlurs(
                 toImage: cgImage,
                 withDescriptions: descriptions
             )
