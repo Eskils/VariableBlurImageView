@@ -58,14 +58,32 @@ kernel void variableBlurVertical(
     const half2 hGid = (half2)gid;
     const ushort2 out = ushort2(gid.x + size.x, gid.y);
     
-    if (hGid.y < startPoint || hGid.y >= endPoint) {
+    half lowestPoint;
+    half greatestPoint;
+    bool invertT;
+    if ((half)startRadius >= (half)endRadius) {
+        lowestPoint = endPoint;
+        greatestPoint = startPoint;
+        invertT = true;
+    } else {
+        lowestPoint = startPoint;
+        greatestPoint = endPoint;
+        invertT = false;
+    }
+    
+    half dRange = greatestPoint - lowestPoint;
+    half t = (hGid.y - lowestPoint) / dRange;
+    
+    if (invertT)
+        t = 1 - t;
+    
+    if (t < 0 || t > 1) {
         texture.write(texture.read(gid), out);
         return;
     }
     
-    half dRange = endPoint - startPoint;
-    half t = clamp((hGid.y - (half)startRadius) / dRange, 0.0h, 1.0h);
-    half radius = max(mix((half)startRadius, (half)endRadius, t), 1.0h);
+    half tClamped = clamp(t, 0.0h, 1.0h);
+    half radius = max(mix((half)startRadius, (half)endRadius, tClamped), 1.0h);
     
     float4 colorOut = (float4)colorForBlurAtPixel(hGid, texture, radius, size);
     
@@ -84,14 +102,32 @@ kernel void variableBlurHorizontal(
     const half2 hGid = (half2)gid;
     const ushort2 out = ushort2(gid.x + size.x, gid.y);
     
-    if (hGid.x < startPoint || hGid.x >= endPoint) {
+    half lowestPoint;
+    half greatestPoint;
+    bool invertT;
+    if ((half)startRadius >= (half)endRadius) {
+        lowestPoint = endPoint;
+        greatestPoint = startPoint;
+        invertT = true;
+    } else {
+        lowestPoint = startPoint;
+        greatestPoint = endPoint;
+        invertT = false;
+    }
+    
+    half dRange = greatestPoint - lowestPoint;
+    half t = (hGid.x - lowestPoint) / dRange;
+    
+    if (invertT)
+        t = 1 - t;
+    
+    if (t < 0 || t > 1) {
         texture.write(texture.read(gid), out);
         return;
     }
     
-    half dRange = endPoint - startPoint;
-    half t = clamp((hGid.x - (half)startRadius) / dRange, 0.0h, 1.0h);
-    half radius = max(mix((half)startRadius, (half)endRadius, t), 1.0h);
+    half tClamped = clamp(t, 0.0h, 1.0h);
+    half radius = max(mix((half)startRadius, (half)endRadius, tClamped), 1.0h);
     
     float4 colorOut = (float4)colorForBlurAtPixel(hGid, texture, radius, size);
     

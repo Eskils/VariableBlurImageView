@@ -30,6 +30,24 @@ final class VariableBlurImageViewTests: XCTestCase {
         )
     }
     
+    func testVerticalVariableBlurFromBottom() throws {
+        XCTAssertTrue(
+            try isEqual(
+                inputImageName: inputImageName,
+                expectedImageName: "\(inputImageName)-VerticalBlur-(90h,20)-to-(50h,0)",
+                afterPerformingImageOperations: { input in
+                    try variableBlurEngine.applyVerticalVariableBlur(
+                        toImage: input,
+                        startPoint: CGFloat(input.height) * 0.9,
+                        endPoint: CGFloat(input.height / 2),
+                        startRadius: 20,
+                        endRadius: 0
+                    )
+                }
+            )
+        )
+    }
+    
     func testPerformanceOfVerticalVariableBlur() throws {
         let inputImage = try provideInputImage(inputImageName: inputImageName)
         measure {
@@ -52,6 +70,24 @@ final class VariableBlurImageViewTests: XCTestCase {
                     try variableBlurEngine.applyHorizontalVariableBlur(
                         toImage: input,
                         startPoint: 0,
+                        endPoint: CGFloat(input.width / 2),
+                        startRadius: 20,
+                        endRadius: 0
+                    )
+                }
+            )
+        )
+    }
+    
+    func testHorizontalVariableBlurFromRight() throws {
+        XCTAssertTrue(
+            try isEqual(
+                inputImageName: inputImageName,
+                expectedImageName: "\(inputImageName)-HorizontalBlur-(90w,20)-to-(50w,0)",
+                afterPerformingImageOperations: { input in
+                    try variableBlurEngine.applyHorizontalVariableBlur(
+                        toImage: input,
+                        startPoint: CGFloat(input.width) * 0.9,
                         endPoint: CGFloat(input.width / 2),
                         startRadius: 20,
                         endRadius: 0

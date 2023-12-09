@@ -25,6 +25,19 @@ struct GenerateImages {
                 )
             }?
             .adding(to: &outputImages)
+        
+        // Vertical blur from bottom
+        OutputImage
+            .from(image: inputImage, named: "\(name)-VerticalBlur-(90h,20)-to-(50h,0)") { input in
+                try variableBlurEngine.applyVerticalVariableBlur(
+                    toImage: input,
+                    startPoint: CGFloat(input.height) * 0.9,
+                    endPoint: CGFloat(input.height / 2),
+                    startRadius: 20,
+                    endRadius: 0
+                )
+            }?
+            .adding(to: &outputImages)
 
         // Horizontal blur
         OutputImage
@@ -32,6 +45,19 @@ struct GenerateImages {
                 try variableBlurEngine.applyHorizontalVariableBlur(
                     toImage: input,
                     startPoint: 0,
+                    endPoint: CGFloat(input.width / 2),
+                    startRadius: 20,
+                    endRadius: 0
+                )
+            }?
+            .adding(to: &outputImages)
+        
+        // Horizontal blur from right
+        OutputImage
+            .from(image: inputImage, named: "\(name)-HorizontalBlur-(90w,20)-to-(50w,0)") { input in
+                try variableBlurEngine.applyHorizontalVariableBlur(
+                    toImage: input,
+                    startPoint: CGFloat(input.width) * 0.9,
                     endPoint: CGFloat(input.width / 2),
                     startRadius: 20,
                     endRadius: 0
