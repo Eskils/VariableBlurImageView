@@ -126,7 +126,7 @@ extension Image {
     ///   - descriptions: An array of structures describing start/ent points and start/end radiuses.
     @MainActor
     @ViewBuilder
-    public func mutlipleBlurs(descriptions: [VariableBlurDescription]) -> some View {
+    public func multipleBlurs(descriptions: [VariableBlurDescription]) -> some View {
         let imageRendrer = ImageRenderer(content: self)
         
         if let cpImage = imageRendrer.cpImage {
