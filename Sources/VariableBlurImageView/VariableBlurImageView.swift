@@ -5,6 +5,7 @@
 //  Created by Eskil Gjerde Sviggum on 05/12/2023.
 //
 
+#if canImport(UIKit)
 import UIKit
 
 open class VariableBlurImageView: UIImageView {
@@ -15,11 +16,119 @@ open class VariableBlurImageView: UIImageView {
     /// This method works asynchronously.
     /// - Parameters:
     ///   - image: The image to blur.
+    ///   - startPoint: The vertical start point. In UI coordinates.
+    ///   - endPoint: The vertical end point. In UI coordinates.
+    ///   - startRadius: The blur radius at the start point.
+    ///   - endRadius: The blur radius ar the end point.
+    public func verticalVariableBlur(image: UIImage, startPoint: CGFloat, endPoint: CGFloat, startRadius: CGFloat, endRadius: CGFloat) {
+        verticalVariableBlurImpl(image: image, startPoint: startPoint, endPoint: endPoint, startRadius: startRadius, endRadius: endRadius)
+    }
+    
+    /// Adds a horizontal variable blur to your image.
+    /// This method works asyncronously.
+    /// - Parameters:
+    ///   - image: The image to blur.
+    ///   - startPoint: The horizontal start point. In UI coordinates.
+    ///   - endPoint: The horizontal end point. In UI coordinates.
+    ///   - startRadius: The blur radius at the start point.
+    ///   - endRadius: The blur radius ar the end point.
+    public func horizontalVariableBlur(image: UIImage, startPoint: CGFloat, endPoint: CGFloat, startRadius: CGFloat, endRadius: CGFloat) {
+        horizontalVariableBlurImpl(image: image, startPoint: startPoint, endPoint: endPoint, startRadius: startRadius, endRadius: endRadius)
+    }
+    
+    /// Adds a variable blur between two points to your image.
+    /// This method works asyncronously.
+    /// - Parameters:
+    ///   - image: The image to blur.
+    ///   - startPoint: The start point. In UI coordinates.
+    ///   - endPoint: The end point. In UI coordinates.
+    ///   - startRadius: The blur radius at the start point.
+    ///   - endRadius: The blur radius ar the end point.
+    public func variableBlur(image: UIImage, startPoint: CGPoint, endPoint: CGPoint, startRadius: CGFloat, endRadius: CGFloat) {
+        variableBlurImpl(image: image, startPoint: startPoint, endPoint: endPoint, startRadius: startRadius, endRadius: endRadius)
+    }
+    
+}
+
+#elseif canImport(AppKit)
+import AppKit
+
+extension CPImage {
+    convenience init(cgImage: CGImage) {
+        self.init(cgImage: cgImage, size: CGSize(width: cgImage.width, height: cgImage.height))
+    }
+}
+
+open class VariableBlurImageView: NSImageView {
+    
+    private let variableBlurEngine = VariableBlurEngine()
+    
+    private var originalImage: NSImage?
+    
+    private var blurOperation: VariableBlurOperation?
+    
+    /// Adds a vertical variable blur to your image.
+    /// This method works asynchronously.
+    /// - Parameters:
+    ///   - image: The image to blur.
     ///   - startPoint: The vertical start point. In UIKit coordinates.
     ///   - endPoint: The vertical end point. In UIKit coordinates.
     ///   - startRadius: The blur radius at the start point.
     ///   - endRadius: The blur radius ar the end point.
-    public func verticalVariableBlur(image: UIImage, startPoint: CGFloat, endPoint: CGFloat, startRadius: CGFloat, endRadius: CGFloat) {
+    public func verticalVariableBlur(image: NSImage, startPoint: CGFloat, endPoint: CGFloat, startRadius: CGFloat, endRadius: CGFloat) {
+        originalImage = image
+        blurOperation = .vertical(startPoint, endPoint, startRadius, endRadius)
+        
+        verticalVariableBlurImpl(image: image, startPoint: startPoint, endPoint: endPoint, startRadius: startRadius, endRadius: endRadius)
+    }
+    
+    /// Adds a horizontal variable blur to your image.
+    /// This method works asyncronously.
+    /// - Parameters:
+    ///   - image: The image to blur.
+    ///   - startPoint: The horizontal start point. In UIKit coordinates.
+    ///   - endPoint: The horizontal end point. In UIKit coordinates.
+    ///   - startRadius: The blur radius at the start point.
+    ///   - endRadius: The blur radius ar the end point.
+    public func horizontalVariableBlur(image: NSImage, startPoint: CGFloat, endPoint: CGFloat, startRadius: CGFloat, endRadius: CGFloat) {
+        originalImage = image
+        blurOperation = .horizontal(startPoint, endPoint, startRadius, endRadius)
+        
+        horizontalVariableBlurImpl(image: image, startPoint: startPoint, endPoint: endPoint, startRadius: startRadius, endRadius: endRadius)
+    }
+    
+    /// Adds a variable blur between two points to your image.
+    /// This method works asyncronously.
+    /// - Parameters:
+    ///   - image: The image to blur.
+    ///   - startPoint: The start point. In UIKit coordinates.
+    ///   - endPoint: The end point. In UIKit coordinates.
+    ///   - startRadius: The blur radius at the start point.
+    ///   - endRadius: The blur radius ar the end point.
+    public func variableBlur(image: NSImage, startPoint: CGPoint, endPoint: CGPoint, startRadius: CGFloat, endRadius: CGFloat) {
+        originalImage = image
+        blurOperation = .betweenTwoPoints(startPoint, endPoint, startRadius, endRadius)
+        
+        variableBlurImpl(image: image, startPoint: startPoint, endPoint: endPoint, startRadius: startRadius, endRadius: endRadius)
+    }
+    
+    open override func viewDidChangeEffectiveAppearance() {
+        super.viewDidChangeEffectiveAppearance()
+        
+        guard let originalImage, let blurOperation else {
+            return
+        }
+        
+        blurOperation.performOperation(onImage: originalImage, imageView: self)
+    }
+    
+}
+
+#endif
+
+extension VariableBlurImageView {
+    
+    func verticalVariableBlurImpl(image: CPImage, startPoint: CGFloat, endPoint: CGFloat, startRadius: CGFloat, endRadius: CGFloat) {
         transformAllVariations(ofImage: image, variationTransformMode: .sequential) { cgImage in
             try self.variableBlurEngine.applyVerticalVariableBlur(
                 toImage:        cgImage,
@@ -31,15 +140,7 @@ open class VariableBlurImageView: UIImageView {
         }
     }
     
-    /// Adds a horizontal variable blur to your image.
-    /// This method works asyncronously.
-    /// - Parameters:
-    ///   - image: The image to blur.
-    ///   - startPoint: The horizontal start point. In UIKit coordinates.
-    ///   - endPoint: The horizontal end point. In UIKit coordinates.
-    ///   - startRadius: The blur radius at the start point.
-    ///   - endRadius: The blur radius ar the end point.
-    public func horizontalVariableBlur(image: UIImage, startPoint: CGFloat, endPoint: CGFloat, startRadius: CGFloat, endRadius: CGFloat) {
+    func horizontalVariableBlurImpl(image: CPImage, startPoint: CGFloat, endPoint: CGFloat, startRadius: CGFloat, endRadius: CGFloat) {
         transformAllVariations(ofImage: image, variationTransformMode: .sequential) { cgImage in
             try self.variableBlurEngine.applyHorizontalVariableBlur(
                 toImage:        cgImage,
@@ -51,15 +152,7 @@ open class VariableBlurImageView: UIImageView {
         }
     }
     
-    /// Adds a variable blur between two points to your image.
-    /// This method works asyncronously.
-    /// - Parameters:
-    ///   - image: The image to blur.
-    ///   - startPoint: The start point. In UIKit coordinates.
-    ///   - endPoint: The end point. In UIKit coordinates.
-    ///   - startRadius: The blur radius at the start point.
-    ///   - endRadius: The blur radius ar the end point.
-    public func variableBlur(image: UIImage, startPoint: CGPoint, endPoint: CGPoint, startRadius: CGFloat, endRadius: CGFloat) {
+    func variableBlurImpl(image: CPImage, startPoint: CGPoint, endPoint: CGPoint, startRadius: CGFloat, endRadius: CGFloat) {
         transformAllVariations(ofImage: image, variationTransformMode: .sequential) { cgImage in
             try self.variableBlurEngine.applyVariableBlur(
                 toImage:        cgImage,
@@ -71,10 +164,12 @@ open class VariableBlurImageView: UIImageView {
         }
     }
     
-    private func transformAllVariations(ofImage image: UIImage, variationTransformMode: VariationTansformMode, applyingTransform block: @escaping (CGImage) throws -> CGImage) {
+    private func transformAllVariations(ofImage image: CPImage, variationTransformMode: VariationTansformMode, applyingTransform block: @escaping (CGImage) throws -> CGImage) {
         self.image = image
         
+        #if canImport(UIKit)
         let currentStyle = traitCollection.userInterfaceStyle
+        #endif
         
         let imageVariations = self.getImageVariations(image: image, currentStyleFirst: variationTransformMode.currentStyleFirst)
         
@@ -104,7 +199,7 @@ open class VariableBlurImageView: UIImageView {
                         // Set image when first result is ready
                         if i == 0 {
                             DispatchQueue.main.async {
-                                self.image = UIImage(cgImage: blurredImage)
+                                self.image = CPImage(cgImage: blurredImage)
                             }
                         }
                         
@@ -113,11 +208,20 @@ open class VariableBlurImageView: UIImageView {
                     blurredImageVariations = variations
                 }
                 
+                #if canImport(UIKit)
                 let imageWithVariations = self.makeSingleImageWithStyleVariations(fromImages: blurredImageVariations, currentStyleFirst: variationTransformMode.currentStyleFirst, currentStyle: currentStyle)
                 
                 DispatchQueue.main.async {
                     self.image = imageWithVariations
                 }
+                #elseif canImport(AppKit)
+                guard let firstImage = blurredImageVariations.first else {
+                    return
+                }
+                DispatchQueue.main.async {
+                    self.image = CPImage(cgImage: firstImage)
+                }
+                #endif
             } catch {
                 #if DEBUG
                 print("Could not apply variable blur to image: \(error)")
@@ -129,7 +233,28 @@ open class VariableBlurImageView: UIImageView {
         }
     }
     
-    private func getImageVariations(image: UIImage, currentStyleFirst: Bool) -> [UIImage] {
+    enum VariationTansformMode {
+        /// Tiles the image variations into one image and performs one transform
+        case tile(tileMode: ImageTiler.ImageTileMode)
+        
+        /// Performs the transform on each image variation sequentially
+        case sequential
+        
+        var currentStyleFirst: Bool {
+            switch self {
+            case .tile(_):
+                return false
+            case .sequential:
+                return true
+            }
+        }
+    }
+    
+}
+
+#if canImport(UIKit)
+extension VariableBlurImageView {
+    fileprivate func getImageVariations(image: UIImage, currentStyleFirst: Bool) -> [CPImage] {
         guard let imageAsset = image.imageAsset else {
             return [image]
         }
@@ -154,7 +279,7 @@ open class VariableBlurImageView: UIImageView {
         return [lightImage, darkImage]
     }
     
-    private func makeSingleImageWithStyleVariations(fromImages images: [CGImage], currentStyleFirst: Bool, currentStyle: UIUserInterfaceStyle) -> UIImage? {
+    fileprivate func makeSingleImageWithStyleVariations(fromImages images: [CGImage], currentStyleFirst: Bool, currentStyle: UIUserInterfaceStyle) -> CPImage? {
         guard images.count >= 2 else {
             return nil
         }
@@ -175,7 +300,7 @@ open class VariableBlurImageView: UIImageView {
         return imageAsset.image(with: .current)
     }
     
-    private func getCGImage(fromUIImage image: UIImage) -> CGImage? {
+    fileprivate func getCGImage(fromUIImage image: CPImage) -> CGImage? {
         if let cgImage = image.cgImage {
             return cgImage
         }
@@ -186,25 +311,18 @@ open class VariableBlurImageView: UIImageView {
         
         return nil
     }
-    
-    enum VariationTansformMode {
-        /// Tiles the image variations into one image and performs one transform
-        case tile(tileMode: ImageTiler.ImageTileMode)
-        
-        /// Performs the transform on each image variation sequentially
-        case sequential
-        
-        var currentStyleFirst: Bool {
-            switch self {
-            case .tile(_):
-                return false
-            case .sequential:
-                return true
-            }
-        }
+}
+#elseif canImport(AppKit)
+extension VariableBlurImageView {
+    fileprivate func getImageVariations(image: NSImage, currentStyleFirst: Bool) -> [CPImage] {
+        return [image]
     }
     
+    fileprivate func getCGImage(fromUIImage image: CPImage) -> CGImage? {
+        return image.cgImage(forProposedRect: nil, context: nil, hints: nil)
+    }
 }
+#endif
 
 extension VariableBlurImageView {
     enum VariableBlurImageViewError: String, Error {
