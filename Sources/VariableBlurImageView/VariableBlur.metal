@@ -98,10 +98,6 @@ kernel void variableBlurHorizontal(
     texture.write(colorOut, out);
 }
 
-half2 normalOfGradient(half2 gradient) {
-    return half2(gradient.y, -gradient.x);
-}
-
 kernel void variableBlur(
     texture2d<float, access::read_write> texture [[texture(0)]],
     constant float2& startPoint    [[buffer(0)]],
@@ -136,6 +132,79 @@ kernel void variableBlur(
     half radius = max(mix((half)startRadius, (half)endRadius, tClamped), 1.0h);
     
     float4 colorOut = (float4)colorForBlurAtPixel(hGid, texture, radius, size);
+    
+    texture.write(colorOut, out);
+}
+
+kernel void gradientVariableBlur(
+    texture2d<float, access::read_write> texture    [[texture(0)]],
+    texture2d<float, access::read> gradient         [[texture(1)]],
+    constant float& maxRadius                       [[buffer(0)]],
+    constant ushort2 &size                          [[buffer(4)]],
+    ushort2 gid [[thread_position_in_grid]]
+) {
+    const half2 hGid = (half2)gid;
+    const ushort2 out = ushort2(gid.x + size.x, gid.y);
+    
+    const ushort2 gradientGid = ushort2(gid.x % gradient.get_width(), gid.y % gradient.get_height());
+    const float4 gradientValue = gradient.read(gradientGid);
+    const half luma = ((half)gradientValue.x + (half)gradientValue.y + (half)gradientValue.z) / 3;
+    
+    half radius = max(luma * (half)maxRadius, 1.0h);
+    
+    float4 colorOut = (float4)colorForBlurAtPixel(hGid, texture, radius, size);
+    
+    texture.write(colorOut, out);
+}
+
+struct VariableBlurDescription {
+    float2 startPoint;
+    float2 endPoint;
+    float startRadius;
+    float endRadius;
+};
+
+kernel void multipleVariableBlur(
+    texture2d<float, access::read_write> texture [[texture(0)]],
+    constant struct VariableBlurDescription *descriptions    [[buffer(0)]],
+    constant ushort &count      [[buffer(1)]],
+    constant ushort2 &size          [[buffer(4)]],
+    ushort2 gid [[thread_position_in_grid]]
+) {
+    const half2 hGid = (half2)gid;
+    const ushort2 out = ushort2(gid.x + size.x, gid.y);
+    float4 colorOut = 0;
+    
+    for (ushort i = 0; i < count; i++) {
+        const struct VariableBlurDescription description = descriptions[i];
+        
+        float2 startPoint = description.startPoint;
+        float2 endPoint = description.endPoint;
+        
+        const half2 hStartPoint = (half2)startPoint;
+        const half2 hEndPoint = (half2)endPoint;
+        
+        half dx = (hEndPoint.x - hStartPoint.x);
+        half dy = (hEndPoint.y - hStartPoint.y);
+        half angle = atan2(dy, dx);
+        half2x2 projmat = half2x2(cos(angle), -sin(angle), sin(angle), cos(angle));
+        
+        half2 d = projmat * (hGid - hStartPoint);
+        
+        half dRange = distance(endPoint, startPoint);
+        half t = d.x / dRange;
+        
+        if (t < 0.0h || t > 1.0h) {
+            if (i == 0)
+                colorOut = texture.read(gid);
+            continue;
+        }
+        
+        half tClamped = clamp(t, 0.0h, 1.0h);
+        half radius = max(mix((half)description.startRadius, (half)description.endRadius, tClamped), 1.0h);
+        
+        colorOut = (float4)colorForBlurAtPixel(hGid, texture, radius, size);
+    }
     
     texture.write(colorOut, out);
 }

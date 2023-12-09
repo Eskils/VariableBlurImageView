@@ -12,48 +12,19 @@ class VariableBlurMetal {
     
     private lazy var device = MTLCreateSystemDefaultDevice()
     
-    private static let variableBlurVerticalFunctionName = "variableBlurVertical"
-    private lazy var variableBlurVerticalFunction: MetalFunction? = {
-        device.flatMap {
-            do {
-                return try MetalFunction.precompileMetalFunction(withName: Self.variableBlurVerticalFunctionName, device: $0)
-            } catch {
-                #if DEBUG
-                print("Cannot precompile metal function with error: \(error)")
-                #endif
-                return nil
-            }
-        }
-    }()
+    #if DEBUG
+    private let triggerDebugCapture = false
+    #endif
     
-    private static let variableBlurHorizontalFunctionName = "variableBlurHorizontal"
-    private lazy var variableBlurHorizontalFunction: MetalFunction? = {
-        device.flatMap {
-            do {
-                return try MetalFunction.precompileMetalFunction(withName: Self.variableBlurHorizontalFunctionName, device: $0)
-            } catch {
-                #if DEBUG
-                print("Cannot precompile metal function with error: \(error)")
-                #endif
-                return nil
-            }
-        }
-    }()
+    // MARK: - Functions
     
-    private static let variableBlurFunctionName = "variableBlur"
-    private lazy var variableBlurFunction: MetalFunction? = {
-        device.flatMap {
-            do {
-                return try MetalFunction.precompileMetalFunction(withName: Self.variableBlurFunctionName, device: $0)
-            } catch {
-                #if DEBUG
-                print("Cannot precompile metal function with error: \(error)")
-                #endif
-                return nil
-            }
-        }
-    }()
+    private lazy var variableBlurVerticalFunction   = tryPrecompileMetalFunction(withName: "variableBlurVertical")
+    private lazy var variableBlurHorizontalFunction = tryPrecompileMetalFunction(withName: "variableBlurHorizontal")
+    private lazy var variableBlurFunction           = tryPrecompileMetalFunction(withName: "variableBlur")
+    private lazy var gradientVariableBlurFunction   = tryPrecompileMetalFunction(withName: "gradientVariableBlur")
+    private lazy var multipleVariableBlurFunction   = tryPrecompileMetalFunction(withName: "multipleVariableBlur")
     
+    // MARK: - Reusable buffers
     lazy var sizeBuffer         = device?.makeBuffer(length: MemoryLayout<SIMD2<UInt16>>.size)
     lazy var startPoint1DBuffer = device?.makeBuffer(length: MemoryLayout<Float>.size)
     lazy var endPoint1DBuffer   = device?.makeBuffer(length: MemoryLayout<Float>.size)
@@ -61,6 +32,20 @@ class VariableBlurMetal {
     lazy var endPoint2DBuffer   = device?.makeBuffer(length: MemoryLayout<SIMD2<Float>>.size)
     lazy var startRadiusBuffer  = device?.makeBuffer(length: MemoryLayout<Float>.size)
     lazy var endRadiusBuffer    = device?.makeBuffer(length: MemoryLayout<Float>.size)
+    lazy var countBuffer        = device?.makeBuffer(length: MemoryLayout<UInt16>.size)
+    
+    private func tryPrecompileMetalFunction(withName name: String) -> MetalFunction? {
+        device.flatMap {
+            do {
+                return try MetalFunction.precompileMetalFunction(withName: name, device: $0)
+            } catch {
+                #if DEBUG
+                print("Cannot precompile metal function with error: \(error)")
+                #endif
+                return nil
+            }
+        }
+    }
     
     private func variableBlurGeneric(_ function: MetalFunction?, image: CGImage, bufferConfigurationHandler: @escaping (MTLDevice, MTLComputeCommandEncoder) -> Void) throws -> CGImage {
         guard let device, let sizeBuffer else {
@@ -73,9 +58,11 @@ class VariableBlurMetal {
             throw MetalVariableBlurError.cannotMakeTexture
         }
         
-//        #if DEBUG
-//        triggerProgrammaticCapture(device: device)
-//        #endif
+        #if DEBUG
+        if triggerDebugCapture {
+            triggerProgrammaticCapture(device: device)
+        }
+        #endif
         
         guard let function else {
             throw MetalVariableBlurError.cannotPrecompileMetalFunction
@@ -175,6 +162,43 @@ class VariableBlurMetal {
         }
     }
     
+    func gradientVariableBlur(image: CGImage, gradientImage: CGImage, maxRadius: Float) throws -> CGImage {
+        guard let startRadiusBuffer, let gradientTexture = self.makeInputTexture(withImage: gradientImage) else {
+            throw MetalVariableBlurError.cannotCreateDevice
+        }
+        
+        return try variableBlurGeneric(gradientVariableBlurFunction, image: image) { (device, commandEncoder) in
+            commandEncoder.setTexture(gradientTexture, index: 1)
+            
+            // Max radius
+            startRadiusBuffer.contents().assumingMemoryBound(to: Float.self).pointee = maxRadius
+            commandEncoder.setBuffer(startRadiusBuffer, offset: 0, index: 0)
+        }
+    }
+    
+    func multipleVariableBlur(image: CGImage, descriptions: [VariableBlurDescriptionMetal]) throws -> CGImage {
+        guard let countBuffer else {
+            throw MetalVariableBlurError.cannotCreateDevice
+        }
+        
+        return try variableBlurGeneric(multipleVariableBlurFunction, image: image) { (device, commandEncoder) in
+            // Descriptions
+            let descriptionsBuffer = device.makeBuffer(length: MemoryLayout<VariableBlurDescriptionMetal>.size)
+            descriptions.withUnsafeBytes { bufferPointer in
+                let src = bufferPointer.baseAddress?.assumingMemoryBound(to: VariableBlurDescriptionMetal.self)
+                let dest = descriptionsBuffer?.contents().assumingMemoryBound(to: VariableBlurDescriptionMetal.self)
+                src.map {
+                    dest?.update(from: $0, count: descriptions.count)
+                }
+            }
+            commandEncoder.setBuffer(descriptionsBuffer, offset: 0, index: 0)
+            
+            // Count
+            countBuffer.contents().assumingMemoryBound(to: UInt16.self).pointee = UInt16(descriptions.count)
+            commandEncoder.setBuffer(countBuffer, offset: 0, index: 1)
+        }
+    }
+    
     private func makeInputOutputTexture(withImage image: CGImage) -> MTLTexture? {
         guard let device else {
             return nil
@@ -184,6 +208,38 @@ class VariableBlurMetal {
         let height = image.height
         
         guard let texture = MetalFunction.makeTexture(width: 2 * width, height: height, device: device) else {
+            return nil
+        }
+        
+        guard
+            let imageData = image.dataProvider?.data,
+            let imageBytes = CFDataGetBytePtr(imageData)
+        else {
+            return nil
+        }
+        
+        texture.replace(
+            region: MTLRegion(
+                origin: MTLOrigin(x: 0, y: 0, z: 0),
+                size: MTLSize(width: width, height: height, depth: 1)
+            ),
+            mipmapLevel: 0,
+            withBytes: imageBytes,
+            bytesPerRow: image.bytesPerRow
+        )
+        
+        return texture
+    }
+    
+    private func makeInputTexture(withImage image: CGImage) -> MTLTexture? {
+        guard let device else {
+            return nil
+        }
+        
+        let width = image.width
+        let height = image.height
+        
+        guard let texture = MetalFunction.makeTexture(width: width, height: height, device: device) else {
             return nil
         }
         

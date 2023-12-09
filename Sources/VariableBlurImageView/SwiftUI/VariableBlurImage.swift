@@ -123,46 +123,70 @@ public struct VariableBlurImage: View {
     }
 }
 
-#if canImport(UIKit)
-
-private struct VariableBlurImageImpl: UIViewRepresentable {
-    
-    private let image: UIImage
+/// An image view which adds a variable blur following the lightness value in the provided gradient image.
+public struct GradientBlurImage: View {
+    private let image: CPImage
     private let blurOperation: VariableBlurOperation
     
-    init(image: UIImage, blurOperation: VariableBlurOperation) {
+    #if canImport(UIKit)
+    /// Adds a variable blur following the lightness value in the provided gradient image.
+    /// If the gradient image is smaller than the input image, the gradient image is tiled.
+    /// This method works asyncronously.
+    /// - Parameters:
+    ///   - image: The image to blur.
+    ///   - gradient: The image describing the blur radius in terms of lightness. Preferrably a grayscale image.
+    ///   - maxRadius: The max blur radius. Fully white corresponds to this radius, while black corresponds to 0.
+    public init(image: UIImage, gradientImage: UIImage, maxRadius: CGFloat) {
         self.image = image
-        self.blurOperation = blurOperation
+        self.blurOperation = .gradient(gradientImage, maxRadius)
     }
-    
-    public func makeUIView(context: Context) -> VariableBlurImageView {
-        let imageView = VariableBlurImageView()
-        blurOperation.performOperation(onImage: image, imageView: imageView)
-        return imageView
+    #elseif canImport(AppKit)
+    /// Adds a variable blur following the lightness value in the provided gradient image.
+    /// If the gradient image is smaller than the input image, the gradient image is tiled.
+    /// This method works asyncronously.
+    /// - Parameters:
+    ///   - image: The image to blur.
+    ///   - gradient: The image describing the blur radius in terms of lightness. Preferrably a grayscale image.
+    ///   - maxRadius: The max blur radius. Fully white corresponds to this radius, while black corresponds to 0.
+    public init(image: NSImage, gradientImage: NSImage, maxRadius: CGFloat) {
+        self.image = image
+        self.blurOperation = .gradient(gradientImage, maxRadius)
     }
+    #endif
     
-    public func updateUIView(_ uiView: VariableBlurImageView, context: Context) {
+    public var body: some View {
+        VariableBlurImageImpl(image: image, blurOperation: blurOperation)
     }
 }
 
-#elseif canImport(AppKit)
-private struct VariableBlurImageImpl: NSViewRepresentable {
-    
-    private let image: NSImage
+/// An image view which adds multiple variable blurs to the image.
+public struct MultipleBlursImage: View {
+    private let image: CPImage
     private let blurOperation: VariableBlurOperation
     
-    init(image: NSImage, blurOperation: VariableBlurOperation) {
+    #if canImport(UIKit)
+    /// Adds multiple variable blurs as provided by an array of start/ent points and start/end radiuses.
+    /// This method works asyncronously.
+    /// - Parameters:
+    ///   - image: The image to blur.
+    ///   - descriptions: An array of structures describing start/ent points and start/end radiuses.
+    public init(image: UIImage, descriptions: [VariableBlurDescription]) {
         self.image = image
-        self.blurOperation = blurOperation
+        self.blurOperation = .multiple(descriptions)
     }
-    
-    public func makeNSView(context: Context) -> VariableBlurImageView {
-        let imageView = VariableBlurImageView()
-        blurOperation.performOperation(onImage: image, imageView: imageView)
-        return imageView
+    #elseif canImport(AppKit)
+    /// Adds multiple variable blurs as provided by an array of start/ent points and start/end radiuses.
+    /// This method works asyncronously.
+    /// - Parameters:
+    ///   - image: The image to blur.
+    ///   - descriptions: An array of structures describing start/ent points and start/end radiuses.
+    public init(image: NSImage, descriptions: [VariableBlurDescription]) {
+        self.image = image
+        self.blurOperation = .multiple(descriptions)
     }
+    #endif
     
-    public func updateNSView(_ uiView: VariableBlurImageView, context: Context) {
+    public var body: some View {
+        VariableBlurImageImpl(image: image, blurOperation: blurOperation)
     }
 }
-#endif

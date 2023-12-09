@@ -51,6 +51,31 @@ struct GenerateImages {
                 )
             }?
             .adding(to: &outputImages)
+        
+        // Gradient blur
+        OutputImage
+            .from(image: inputImage, named: "\(name)-GradientBlur-20") { input in
+                let gradientImage = try GenerateTestImages.image(atPath: inputURL.appendingPathComponent("TestAlpha.png").path)
+                return try variableBlurEngine.applyGradientVariabeBlur(
+                    toImage: input,
+                    withGradient: gradientImage,
+                    maxRadius: 20
+                )
+            }?
+            .adding(to: &outputImages)
+        
+        // MultipleBlurs
+        OutputImage
+            .from(image: inputImage, named: "\(name)-MultipleBlurs-20") { input in
+                return try variableBlurEngine.applyMultipleVariabeBlurs(
+                    toImage: input,
+                    withDescriptions: [
+                        VariableBlurDescription(startPoint: CGPoint(x: 0, y: 0), endPoint: CGPoint(x: 0, y: CGFloat(input.height) * 0.4), startRadius: 20, endRadius: 0),
+                        VariableBlurDescription(startPoint: CGPoint(x: 0, y: CGFloat(input.height)), endPoint: CGPoint(x: 0, y: CGFloat(input.height) * 0.5), startRadius: 20, endRadius: 0),
+                    ]
+                )
+            }?
+            .adding(to: &outputImages)
     }
     
 }

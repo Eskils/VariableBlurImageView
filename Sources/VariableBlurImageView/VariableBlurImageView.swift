@@ -21,7 +21,13 @@ open class VariableBlurImageView: UIImageView {
     ///   - startRadius: The blur radius at the start point.
     ///   - endRadius: The blur radius ar the end point.
     public func verticalVariableBlur(image: UIImage, startPoint: CGFloat, endPoint: CGFloat, startRadius: CGFloat, endRadius: CGFloat) {
-        verticalVariableBlurImpl(image: image, startPoint: startPoint, endPoint: endPoint, startRadius: startRadius, endRadius: endRadius)
+        verticalVariableBlurImpl(
+            image: image,
+            startPoint: startPoint,
+            endPoint: endPoint, 
+            startRadius: startRadius,
+            endRadius: endRadius
+        )
     }
     
     /// Adds a horizontal variable blur to your image.
@@ -33,7 +39,13 @@ open class VariableBlurImageView: UIImageView {
     ///   - startRadius: The blur radius at the start point.
     ///   - endRadius: The blur radius ar the end point.
     public func horizontalVariableBlur(image: UIImage, startPoint: CGFloat, endPoint: CGFloat, startRadius: CGFloat, endRadius: CGFloat) {
-        horizontalVariableBlurImpl(image: image, startPoint: startPoint, endPoint: endPoint, startRadius: startRadius, endRadius: endRadius)
+        horizontalVariableBlurImpl(
+            image: image,
+            startPoint: startPoint,
+            endPoint: endPoint,
+            startRadius: startRadius,
+            endRadius: endRadius
+        )
     }
     
     /// Adds a variable blur between two points to your image.
@@ -45,7 +57,40 @@ open class VariableBlurImageView: UIImageView {
     ///   - startRadius: The blur radius at the start point.
     ///   - endRadius: The blur radius ar the end point.
     public func variableBlur(image: UIImage, startPoint: CGPoint, endPoint: CGPoint, startRadius: CGFloat, endRadius: CGFloat) {
-        variableBlurImpl(image: image, startPoint: startPoint, endPoint: endPoint, startRadius: startRadius, endRadius: endRadius)
+        variableBlurImpl(
+            image: image,
+            startPoint: startPoint,
+            endPoint: endPoint,
+            startRadius: startRadius,
+            endRadius: endRadius
+        )
+    }
+    
+    /// Adds a variable blur following the lightness value in the provided gradient image.
+    /// If the gradient image is smaller than the input image, the gradient image is tiled.
+    /// This method works asyncronously.
+    /// - Parameters:
+    ///   - image: The image to blur.
+    ///   - gradient: The image describing the blur radius in terms of lightness. Preferrably a grayscale image.
+    ///   - maxRadius: The max blur radius. Fully white corresponds to this radius, while black corresponds to 0.
+    public func gradientBlur(image: UIImage, gradientImage: UIImage, maxRadius: CGFloat) {
+        gradientVariableBlurImpl(
+            image: image,
+            gradientImage: gradientImage,
+            maxRadius: maxRadius
+        )
+    }
+    
+    /// Adds multiple variable blurs as provided by an array of start/ent points and start/end radiuses.
+    /// This method works asyncronously.
+    /// - Parameters:
+    ///   - image: The image to blur.
+    ///   - descriptions: An array of structures describing start/ent points and start/end radiuses.
+    public func multipleBlurs(image: UIImage, descriptions: [VariableBlurDescription]) {
+        multipleVariableBlursImpl(
+            image: image,
+            descriptions: descriptions
+        )
     }
     
 }
@@ -65,6 +110,9 @@ open class VariableBlurImageView: NSImageView {
     
     private var originalImage: NSImage?
     
+    /// Used to keep track of which blurOperation has been performed
+    /// in order to reperform the same operation when a trait changes
+    /// (e.g. when system appearance changes)
     private var blurOperation: VariableBlurOperation?
     
     /// Adds a vertical variable blur to your image.
@@ -79,7 +127,13 @@ open class VariableBlurImageView: NSImageView {
         originalImage = image
         blurOperation = .vertical(startPoint, endPoint, startRadius, endRadius)
         
-        verticalVariableBlurImpl(image: image, startPoint: startPoint, endPoint: endPoint, startRadius: startRadius, endRadius: endRadius)
+        verticalVariableBlurImpl(
+            image: image,
+            startPoint: startPoint,
+            endPoint: endPoint,
+            startRadius: startRadius,
+            endRadius: endRadius
+        )
     }
     
     /// Adds a horizontal variable blur to your image.
@@ -94,7 +148,13 @@ open class VariableBlurImageView: NSImageView {
         originalImage = image
         blurOperation = .horizontal(startPoint, endPoint, startRadius, endRadius)
         
-        horizontalVariableBlurImpl(image: image, startPoint: startPoint, endPoint: endPoint, startRadius: startRadius, endRadius: endRadius)
+        horizontalVariableBlurImpl(
+            image: image,
+            startPoint: startPoint,
+            endPoint: endPoint,
+            startRadius: startRadius,
+            endRadius: endRadius
+        )
     }
     
     /// Adds a variable blur between two points to your image.
@@ -109,7 +169,46 @@ open class VariableBlurImageView: NSImageView {
         originalImage = image
         blurOperation = .betweenTwoPoints(startPoint, endPoint, startRadius, endRadius)
         
-        variableBlurImpl(image: image, startPoint: startPoint, endPoint: endPoint, startRadius: startRadius, endRadius: endRadius)
+        variableBlurImpl(
+            image: image,
+            startPoint: startPoint,
+            endPoint: endPoint,
+            startRadius: startRadius,
+            endRadius: endRadius
+        )
+    }
+    
+    /// Adds a variable blur following the lightness value in the provided gradient image.
+    /// If the gradient image is smaller than the input image, the gradient image is tiled.
+    /// This method works asyncronously.
+    /// - Parameters:
+    ///   - image: The image to blur.
+    ///   - gradient: The image describing the blur radius in terms of lightness. Preferrably a grayscale image.
+    ///   - maxRadius: The max blur radius. Fully white corresponds to this radius, while black corresponds to 0.
+    public func gradientBlur(image: NSImage, gradientImage: NSImage, maxRadius: CGFloat) {
+        originalImage = image
+        blurOperation = .gradient(gradientImage, maxRadius)
+        
+        gradientVariableBlurImpl(
+            image: image,
+            gradientImage: gradientImage,
+            maxRadius: maxRadius
+        )
+    }
+    
+    /// Adds multiple variable blurs as provided by an array of start/ent points and start/end radiuses.
+    /// This method works asyncronously.
+    /// - Parameters:
+    ///   - image: The image to blur.
+    ///   - descriptions: An array of structures describing start/ent points and start/end radiuses.
+    public func multipleBlurs(image: NSImage, descriptions: [VariableBlurDescription]) {
+        originalImage = image
+        blurOperation = .multiple(descriptions)
+        
+        multipleVariableBlursImpl(
+            image: image,
+            descriptions: descriptions
+        )
     }
     
     open override func viewDidChangeEffectiveAppearance() {
@@ -160,6 +259,30 @@ extension VariableBlurImageView {
                 endPoint:       endPoint,
                 startRadius:    startRadius,
                 endRadius:      endRadius
+            )
+        }
+    }
+    
+    func gradientVariableBlurImpl(image: CPImage, gradientImage: CPImage, maxRadius: CGFloat) {
+        guard let cgGradientImage = getCGImage(fromUIImage: gradientImage) else {
+            self.image = image
+            return
+        }
+        
+        transformAllVariations(ofImage: image, variationTransformMode: .sequential) { cgImage in
+            try self.variableBlurEngine.applyGradientVariabeBlur(
+                toImage:        cgImage,
+                withGradient:   cgGradientImage,
+                maxRadius:      maxRadius
+            )
+        }
+    }
+    
+    func multipleVariableBlursImpl(image: CPImage, descriptions: [VariableBlurDescription]) {
+        transformAllVariations(ofImage: image, variationTransformMode: .sequential) { cgImage in
+            try self.variableBlurEngine.applyMultipleVariabeBlurs(
+                toImage: cgImage,
+                withDescriptions: descriptions
             )
         }
     }
