@@ -2,20 +2,28 @@
 
 # VariableBlurImageView
 
-Framework for adding variable blur, or progressive blur, to images on iOS and MacCatalyst. Works with UIKit using Metal.
+Add variable blur to images in UIKit, AppKit, and SwiftUI. Works on Apple platforms using Metal.
 
 ![A hill with a horizontal variable blur from the leading edge to the middle](Documentation/GreenerOnTheOtherSide-HorizontalBlur-(0,20)-to-(50w,0).png)
 
 > Left image has a horizontal variable blur from the leading edge to the middle. Right image has a vertical variable blur from the top edge to the middle.
 
+Demo apps for SwiftUI, UIKit and AppKit are available under [Documentation](/Documentation/).
+
 ## Table of contents
    * [Installation](#installation)
+   * [Requirements](#requirements)
    * [Usage](#usage)
-      * [VariableBlurImageView](#variableblurimageview-1)
-      * [VariableBlurEngine](#variableblurengine)
+      * [Possible kinds](#possible-kinds)
+      * [Working with UIKit and AppKit](#working-with-uikit-and-appkit)
+      * [Working with SwiftUI](#working-with-swiftui)
+      * [Working with CGImages](#working-with-cgimages)
    * [Roadmap](#roadmap)
    * [Project Organization](#project-organization)
-      * [Implementing new blur types](#implementing-new-blur-types)
+   * [Implementing new blur types](#implementing-new-blur-types)
+      * [Steps to implement a new blur type](#steps-to-implement-a-new-blur-type)
+      * [Supplying tests](#supplying-tests)
+      * [Generate images to use in the test](#generate-images-to-use-in-the-test)
    * [Contributing to VariableBlurImageView](#contributing-to-variableblurimageview)
 
 ## Installation
@@ -44,21 +52,27 @@ let package = Package(
 )
 ```
 
+## Requirements
+- Swift 5.9
+- iOS 13.0
+- macOS 11.0
+- tvOS 13.0
+- macCatalyst 13.0
+
 ## Usage
 
-This frameworks provides an UIImageView subclass and a class to apply variable blur to CGImages. The following types are supported: 
+This frameworks provides subclasses for UIImageView, and NSImageView, in addition to SwiftUI views and modifiers to apply variable blur to images.
 
-#### Vertical  
-<img src="Documentation/VariableBlurTestImage-VerticalBlur-(0,20)-to-(50h,0).png" width="256" alt="Vertical progressive blur">
+There is also a class to apply variable blur to CGImages.
 
-#### Horizontal  
-<img src="Documentation/VariableBlurTestImage-HorizontalBlur-(0,20)-to-(50w,0).png" width="256" alt="Horizontal progressive blur">
+### Possible kinds
+ 
+| Vertical | Horizontal | Between two points | Gradient | Multiple blurs |
+|----------|------------|--------------------|----------|----------------|
+![Vertical progressive blur](Documentation/VariableBlurTestImage-VerticalBlur.png) | ![Horizontal progressive blur](Documentation/VariableBlurTestImage-HorizontalBlur.png) | ![Progressive blur between two points](Documentation/VariableBlurTestImage-VariableBlur.png) | ![Progressive blur from the lightness in a gradient image](Documentation/VariableBlurTestImage-GradientBlur.png) | ![Multiple progressive blurs](Documentation/VariableBlurTestImage-MultipleBlurs.png)
 
-#### Between two points  
-<img src="Documentation/VariableBlurTestImage-VariableBlur-((10w,15h),20)-to-((60w,40h),0).png" width="256" alt="Progressive blur between two points">
-
-### VariableBlurImageView
-VariableBlurImageView is a subclass of `UIImageView` which asynchronously applies the wanted progressive blur.
+### Working with UIKit and AppKit
+`VariableBlurImageView` is a subclass of `UIImageView` / `NSImageView` which asynchronously applies the wanted progressive blur.
 
 You provide an image, start point, end point, and their respective blur radiuses.
 
@@ -78,42 +92,91 @@ imageView.verticalVariableBlur(
 
 <img src="Documentation/iOSAppDemo1.png" width="300" alt="Vertical progressive blur of an iOS app onboarding screen from the top to the middle">
 
-#### Vertical 
+#### Available methods
+
 ```swift
-public func verticalVariableBlur(
-    image: UIImage, 
-    startPoint: CGFloat, 
-    endPoint: CGFloat, 
-    startRadius: CGFloat, 
-    endRadius: CGFloat
-)
+/// Adds a vertical variable blur to your image.
+VariableBlurImageView.verticalVariableBlur(image:startPoint:endPoint:startRadius:endRadius)
+
+/// Adds a horizontal variable blur to your image.
+VariableBlurImageView.horizontalVariableBlur(image:startPoint:endPoint:startRadius:endRadius)
+
+// Adds a variable blur between two points to your image.
+VariableBlurImageView.variableBlur(image:startPoint:endPoint:startRadius:endRadius)
+
+/// Adds a variable blur following the lightness in the provided gradient image.
+VariableBlurImageView.gradientBlur(image:gradient:maxRadius:)
+
+/// Adds multiple variable blurs
+VariableBlurImageView.mutlipleBlurs(image:descriptions:)
 ```
 
-#### Horizontal 
+### Working with SwiftUI
+
+Views and View Modifiers on `Image` are available to asynchronously apply the wanted progressive blur.
+
+You provide an image, start point, end point, and their respective blur radiuses.
+
+> **NOTE:** The ViewModifiers are only available from iOS 16.0 and macOS 13.0, and do not support image variations (e.g. dark mode images) 
+
+#### Example
 ```swift
-public func horizontalVariableBlur(
-    image: UIImage, 
-    startPoint: CGFloat, 
-    endPoint: CGFloat, 
-    startRadius: CGFloat, 
-    endRadius: CGFloat
-)
+let backgroundImage = UIImage(resource: .onboardingBackground)
+
+var body: some View {
+    VStack {
+        VerticalVariableBlurImage(
+            image: backgroundImage, 
+            startPoint: 0, 
+            endPoint: backgroundImage.size.height / 4, 
+            startRadius: 15, 
+            endRadius: 0
+        )
+    }
+}
 ```
 
-#### Between two points 
+#### Available Views
+
 ```swift
-public func variableBlur(
-    image: UIImage, 
-    startPoint: CGPoint, 
-    endPoint: CGPoint, 
-    startRadius: CGFloat, 
-    endRadius: CGFloat
-)
+/// Adds a vertical variable blur to your image.
+VerticalVariableBlurImage(image:startPoint:endPoint:startRadius:endRadius)
+
+/// Adds a horizontal variable blur to your image.
+HorizontalVariableBlurImage(image:startPoint:endPoint:startRadius:endRadius)
+
+// Adds a variable blur between two points to your image.
+VariableBlurImage(image:startPoint:endPoint:startRadius:endRadius)
+
+/// Adds a variable blur following the lightness in the provided gradient image.
+GradientBlurImage(image:gradient:maxRadius:)
+
+/// Adds multiple variable blurs
+MultipleBlursImage(image:descriptions:)
 ```
 
-### VariableBlurEngine
+#### Available Image ViewModifiers
 
-VariableBlurEngine is an object used to apply progressive blur to CGImages.
+```swift
+/// Adds a vertical variable blur to your image.
+Image.verticalVariableBlur(startPoint:endPoint:startRadius:endRadius)
+
+/// Adds a horizontal variable blur to your image.
+Image.horizontalVariableBlur(startPoint:endPoint:startRadius:endRadius)
+
+// Adds a variable blur between two points to your image.
+Image.variableBlur(startPoint:endPoint:startRadius:endRadius)
+
+/// Adds a variable blur following the lightness in the provided gradient image.
+Image.gradientBlur(gradient:maxRadius:)
+
+/// Adds multiple variable blurs
+Image.mutlipleBlurs(descriptions:)
+```
+
+### Working with CGImages
+
+`VariableBlurEngine` is an object used to apply progressive blur to CGImages.
 
 You provide a CGImage, start point, end point, and their respective blur radiuses. A new CGImage is returned with the variable blur effect.
 
@@ -133,48 +196,26 @@ let blurredImage = variableBlurEngine.applyVerticalVariableBlur(
 
 <img src="Documentation/Leaves-VerticalBlur-(0,20)-to-(50h,0).png" width="300" alt="Vertical progressive blur from the top to the middle over colorful leaves">
 
-
-#### Vertical
-
-```swift
-public func applyVerticalVariableBlur(
-    toImage image: CGImage, 
-    startPoint: CGFloat, 
-    endPoint: CGFloat, 
-    startRadius: CGFloat, 
-    endRadius: CGFloat
-) throws -> CGImage
-```
-
-#### Horizontal
+#### Available methods
 
 ```swift
-public func applyHorizontalVariableBlur(
-    toImage image: CGImage, 
-    startPoint: CGFloat, 
-    endPoint: CGFloat, 
-    startRadius: CGFloat, 
-    endRadius: CGFloat
-) throws -> CGImage
-```
+/// Adds a vertical variable blur to your image.
+VariableBlurEngine.applyVerticalVariableBlur(image:startPoint:endPoint:startRadius:endRadius)
 
-#### Between two points
+/// Adds a horizontal variable blur to your image.
+VariableBlurEngine.applyHorizontalVariableBlur(image:startPoint:endPoint:startRadius:endRadius)
 
-```swift
-public func applyVariableBlur(
-    toImage image: CGImage, 
-    startPoint: CGPoint, 
-    endPoint: CGPoint, 
-    startRadius: CGFloat, 
-    endRadius: CGFloat
-) throws -> CGImage
+// Adds a variable blur between two points to your image.
+VariableBlurEngine.applyVariableBlur(image:startPoint:endPoint:startRadius:endRadius)
+
+/// Adds a variable blur following the lightness in the provided gradient image.
+VariableBlurEngine.applyGradientVariableBlur(image:gradient:maxRadius:)
+
+/// Adds multiple variable blurs
+VariableBlurEngine.applyMultipleVariableBlurs(image:descriptions:)
 ```
 
 ## Roadmap
-- macOS Support
-- SwiftUI support
-- Variable blur for array of ranges
-- Providing grayscale image to use for controlling blur
 - Separable Gaussian Blur (Performance optimization)
 - Looking into applying variable blur to other UIViews
 
@@ -190,11 +231,35 @@ When implementing altering the look of an existing blur type, expect the tests t
 
 When working on performance improvements, the tests should ideally not fail.
 
-### Implementing new blur types
+## Implementing new blur types
 
 When implementing a new blur type, new tests and generating methods need to be provided.
 
-#### Supplying tests
+### Steps to implement a new blur type
+- Write a new kernel function in Metal
+- Provide a new method in *VariableBlurMetal.swift* to dispatch metal function
+  - Functions are precompiled lazily 
+  - Buffers are made lazily, to be reused
+  - A single texture is used for input/read and output/write. The texture is 2x width to account for this. Output is stored at `point.x + image.width``.
+  - The size of the input image is usually stored at index 4 in the kernel. This is in order to make reusable generic code.
+  - You may use `variableBlurGeneric(_:image:bufferConfigurationHandler:)`.
+- Write a new method in *VariableBlurEngine.swift*
+- Write a new method in *VariableBlurImageView.swift*
+  - Write a `X-variableBlurImpl` method in the extension for both iOS and macOS
+  - You may use the `transformAllVariations(ofImage:variationTransformMode:applyingTransform:)` method.
+  - Write a new method in the UIImageView subclass using `UIImage`.
+  - Write a new method in the NSImageView subclass using `NSImage`.
+    - Set the `originalImage` and `blurOperation` properties.
+- Add a new case to *VariableBlurOperation.swift*
+- Add a new View in *SwiftUI/VariableBlurImage.swift*
+  - Provide separate initializers for UIImage and NSImage.
+- Add a new Image modifier to *SwiftUI/Image+Extension.swift*
+- Write new generating methods in `GenerateTestImages`. See [Generate images to use in test](#generate-images-to-use-in-the-test)
+- Write new tests. See [Supplying tests](#supplying-tests)
+- Update docc documentation with new images, and method overview
+- Update README with new images, and method overview
+
+### Supplying tests
 Generally, at least two tests are written for each blur type — one to check if the images produced are as expected, and one to measure performance.
 
 Checking similarity can be done with the `ìsEqual(inputImageName:expectedImageName:afterPerformingImageOperations:)` method, like so:
@@ -236,7 +301,7 @@ func testPerformanceOfVerticalVariableBlur() throws {
 }
 ```
 
-#### Generate images to use in the test
+### Generate images to use in the test
 
 The `GenerateImages.swift` file in *GenerateTestImages* provides the implementation to generate images.
 
