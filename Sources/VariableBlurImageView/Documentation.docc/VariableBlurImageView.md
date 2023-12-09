@@ -1,6 +1,6 @@
 # ``VariableBlurImageView/VariableBlurImageView``
 
-Subclass of `UIImageView` which asynchronously applies the wanted progressive blur.
+Subclass of `UIImageView` and `NSImageView` which asynchronously applies the wanted progressive blur.
 
 ## Overview
 
@@ -26,3 +26,5 @@ imageView.verticalVariableBlur(
 - ``VariableBlurImageView/VariableBlurImageView/variableBlur(image:startPoint:endPoint:startRadius:endRadius:)``
 - ``VariableBlurImageView/VariableBlurImageView/verticalVariableBlur(image:startPoint:endPoint:startRadius:endRadius:)``
 - ``VariableBlurImageView/VariableBlurImageView/horizontalVariableBlur(image:startPoint:endPoint:startRadius:endRadius:)``
+- ``VariableBlurImageView/VariableBlurImageView/gradientBlur(image:gradientImage:maxRadius:)``
+- ``VariableBlurImageView/VariableBlurImageView/multipleBlurs(image:descriptions:)``

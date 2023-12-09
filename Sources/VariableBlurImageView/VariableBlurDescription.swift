@@ -9,6 +9,7 @@ import Foundation
 import CoreGraphics
 import simd
 
+/// Describe a variable blur’s points and radiuses.
 public struct VariableBlurDescription {
     /// The start point of the blur. In UI coordinates.
     public let startPoint: CGPoint

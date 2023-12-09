@@ -25,3 +25,5 @@ let blurredImage = variableBlurEngine.applyVerticalVariableBlur(
 - ``VariableBlurEngine/applyVariableBlur(toImage:startPoint:endPoint:startRadius:endRadius:)``
 - ``VariableBlurEngine/applyVerticalVariableBlur(toImage:startPoint:endPoint:startRadius:endRadius:)``
 - ``VariableBlurEngine/applyHorizontalVariableBlur(toImage:startPoint:endPoint:startRadius:endRadius:)``
+- ``VariableBlurEngine/applyGradientVariableBlur(toImage:withGradient:maxRadius:)``
+- ``VariableBlurEngine/applyMultipleVariableBlurs(toImage:withDescriptions:)``

@@ -8,6 +8,7 @@
 import Foundation
 import CoreGraphics
 
+/// Apply variable blur to CGImages.
 public struct VariableBlurEngine {
     
     private let variableBlurMetal = VariableBlurMetal()
