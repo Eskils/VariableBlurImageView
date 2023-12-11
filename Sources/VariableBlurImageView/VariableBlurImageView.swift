@@ -20,7 +20,7 @@ open class VariableBlurImageView: UIImageView {
     ///   - endPoint: The vertical end point. In UI coordinates.
     ///   - startRadius: The blur radius at the start point.
     ///   - endRadius: The blur radius ar the end point.
-    public func verticalVariableBlur(image: UIImage, startPoint: CGFloat, endPoint: CGFloat, startRadius: CGFloat, endRadius: CGFloat) {
+    open func verticalVariableBlur(image: UIImage, startPoint: CGFloat, endPoint: CGFloat, startRadius: CGFloat, endRadius: CGFloat) {
         verticalVariableBlurImpl(
             image: image,
             startPoint: startPoint,
@@ -38,7 +38,7 @@ open class VariableBlurImageView: UIImageView {
     ///   - endPoint: The horizontal end point. In UI coordinates.
     ///   - startRadius: The blur radius at the start point.
     ///   - endRadius: The blur radius ar the end point.
-    public func horizontalVariableBlur(image: UIImage, startPoint: CGFloat, endPoint: CGFloat, startRadius: CGFloat, endRadius: CGFloat) {
+    open func horizontalVariableBlur(image: UIImage, startPoint: CGFloat, endPoint: CGFloat, startRadius: CGFloat, endRadius: CGFloat) {
         horizontalVariableBlurImpl(
             image: image,
             startPoint: startPoint,
@@ -56,7 +56,7 @@ open class VariableBlurImageView: UIImageView {
     ///   - endPoint: The end point. In UI coordinates.
     ///   - startRadius: The blur radius at the start point.
     ///   - endRadius: The blur radius ar the end point.
-    public func variableBlur(image: UIImage, startPoint: CGPoint, endPoint: CGPoint, startRadius: CGFloat, endRadius: CGFloat) {
+    open func variableBlur(image: UIImage, startPoint: CGPoint, endPoint: CGPoint, startRadius: CGFloat, endRadius: CGFloat) {
         variableBlurImpl(
             image: image,
             startPoint: startPoint,
@@ -73,7 +73,7 @@ open class VariableBlurImageView: UIImageView {
     ///   - image: The image to blur.
     ///   - gradient: The image describing the blur radius in terms of lightness. Preferrably a grayscale image.
     ///   - maxRadius: The max blur radius. Fully white corresponds to this radius, while black corresponds to 0.
-    public func gradientBlur(image: UIImage, gradientImage: UIImage, maxRadius: CGFloat) {
+    open func gradientBlur(image: UIImage, gradientImage: UIImage, maxRadius: CGFloat) {
         gradientVariableBlurImpl(
             image: image,
             gradientImage: gradientImage,
@@ -86,7 +86,7 @@ open class VariableBlurImageView: UIImageView {
     /// - Parameters:
     ///   - image: The image to blur.
     ///   - descriptions: An array of structures describing start/ent points and start/end radiuses.
-    public func multipleBlurs(image: UIImage, descriptions: [VariableBlurDescription]) {
+    open func multipleBlurs(image: UIImage, descriptions: [VariableBlurDescription]) {
         multipleVariableBlursImpl(
             image: image,
             descriptions: descriptions
@@ -123,7 +123,7 @@ open class VariableBlurImageView: NSImageView {
     ///   - endPoint: The vertical end point. In UIKit coordinates.
     ///   - startRadius: The blur radius at the start point.
     ///   - endRadius: The blur radius ar the end point.
-    public func verticalVariableBlur(image: NSImage, startPoint: CGFloat, endPoint: CGFloat, startRadius: CGFloat, endRadius: CGFloat) {
+    open func verticalVariableBlur(image: NSImage, startPoint: CGFloat, endPoint: CGFloat, startRadius: CGFloat, endRadius: CGFloat) {
         originalImage = image
         blurOperation = .vertical(startPoint, endPoint, startRadius, endRadius)
         
@@ -144,7 +144,7 @@ open class VariableBlurImageView: NSImageView {
     ///   - endPoint: The horizontal end point. In UIKit coordinates.
     ///   - startRadius: The blur radius at the start point.
     ///   - endRadius: The blur radius ar the end point.
-    public func horizontalVariableBlur(image: NSImage, startPoint: CGFloat, endPoint: CGFloat, startRadius: CGFloat, endRadius: CGFloat) {
+    open func horizontalVariableBlur(image: NSImage, startPoint: CGFloat, endPoint: CGFloat, startRadius: CGFloat, endRadius: CGFloat) {
         originalImage = image
         blurOperation = .horizontal(startPoint, endPoint, startRadius, endRadius)
         
@@ -165,7 +165,7 @@ open class VariableBlurImageView: NSImageView {
     ///   - endPoint: The end point. In UIKit coordinates.
     ///   - startRadius: The blur radius at the start point.
     ///   - endRadius: The blur radius ar the end point.
-    public func variableBlur(image: NSImage, startPoint: CGPoint, endPoint: CGPoint, startRadius: CGFloat, endRadius: CGFloat) {
+    open func variableBlur(image: NSImage, startPoint: CGPoint, endPoint: CGPoint, startRadius: CGFloat, endRadius: CGFloat) {
         originalImage = image
         blurOperation = .betweenTwoPoints(startPoint, endPoint, startRadius, endRadius)
         
@@ -185,7 +185,7 @@ open class VariableBlurImageView: NSImageView {
     ///   - image: The image to blur.
     ///   - gradient: The image describing the blur radius in terms of lightness. Preferrably a grayscale image.
     ///   - maxRadius: The max blur radius. Fully white corresponds to this radius, while black corresponds to 0.
-    public func gradientBlur(image: NSImage, gradientImage: NSImage, maxRadius: CGFloat) {
+    open func gradientBlur(image: NSImage, gradientImage: NSImage, maxRadius: CGFloat) {
         originalImage = image
         blurOperation = .gradient(gradientImage, maxRadius)
         
@@ -202,7 +202,7 @@ open class VariableBlurImageView: NSImageView {
     /// - Parameters:
     ///   - image: The image to blur.
     ///   - descriptions: An array of structures describing start/ent points and start/end radiuses.
-    public func multipleBlurs(image: NSImage, descriptions: [VariableBlurDescription]) {
+    open func multipleBlurs(image: NSImage, descriptions: [VariableBlurDescription]) {
         originalImage = image
         blurOperation = .multiple(descriptions)
         
