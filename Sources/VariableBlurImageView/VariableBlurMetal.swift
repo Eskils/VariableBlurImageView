@@ -25,13 +25,16 @@ class VariableBlurMetal {
     private lazy var multipleVariableBlurFunction   = tryPrecompileMetalFunction(withName: "multipleVariableBlur")
     
     // MARK: - Reusable buffers
-    lazy var startPoint1DBuffer = device?.makeBuffer(length: MemoryLayout<Float>.size)
-    lazy var endPoint1DBuffer   = device?.makeBuffer(length: MemoryLayout<Float>.size)
-    lazy var startPoint2DBuffer = device?.makeBuffer(length: MemoryLayout<SIMD2<Float>>.size)
-    lazy var endPoint2DBuffer   = device?.makeBuffer(length: MemoryLayout<SIMD2<Float>>.size)
-    lazy var startRadiusBuffer  = device?.makeBuffer(length: MemoryLayout<Float>.size)
-    lazy var endRadiusBuffer    = device?.makeBuffer(length: MemoryLayout<Float>.size)
-    lazy var countBuffer        = device?.makeBuffer(length: MemoryLayout<UInt16>.size)
+    private lazy var startPoint1DBuffer = device?.makeBuffer(length: MemoryLayout<Float>.size)
+    private lazy var endPoint1DBuffer   = device?.makeBuffer(length: MemoryLayout<Float>.size)
+    private lazy var startPoint2DBuffer = device?.makeBuffer(length: MemoryLayout<SIMD2<Float>>.size)
+    private lazy var endPoint2DBuffer   = device?.makeBuffer(length: MemoryLayout<SIMD2<Float>>.size)
+    private lazy var startRadiusBuffer  = device?.makeBuffer(length: MemoryLayout<Float>.size)
+    private lazy var endRadiusBuffer    = device?.makeBuffer(length: MemoryLayout<Float>.size)
+    private lazy var countBuffer        = device?.makeBuffer(length: MemoryLayout<UInt16>.size)
+    
+    private var textureIn: MTLTexture?
+    private var textureOut: MTLTexture?
     
     private func tryPrecompileMetalFunction(withName name: String) -> MetalFunction? {
         device.flatMap {
@@ -161,7 +164,7 @@ class VariableBlurMetal {
     }
     
     func gradientVariableBlur(image: CGImage, gradientImage: CGImage, maxRadius: Float) throws -> CGImage {
-        guard let startRadiusBuffer, let gradientTexture = self.makeInputTexture(withImage: gradientImage) else {
+        guard let startRadiusBuffer, let gradientTexture = self.makeInputTexture(withImage: gradientImage, allowResusingTexture: false) else {
             throw MetalVariableBlurError.cannotCreateDevice
         }
         
@@ -197,7 +200,7 @@ class VariableBlurMetal {
         }
     }
     
-    private func makeInputTexture(withImage image: CGImage) -> MTLTexture? {
+    private func makeInputTexture(withImage image: CGImage, allowResusingTexture: Bool = true) -> MTLTexture? {
         guard let device else {
             return nil
         }
@@ -205,7 +208,14 @@ class VariableBlurMetal {
         let width = image.width
         let height = image.height
         
-        guard let texture = MetalFunction.makeTexture(width: width, height: height, device: device, usage: .shaderRead, storageMode: .shared) else {
+        let texture: MTLTexture?
+        if let textureIn, textureIn.width == width, textureIn.height == height, allowResusingTexture {
+            texture = textureIn
+        } else {
+            texture = MetalFunction.makeTexture(width: width, height: height, device: device, usage: .shaderRead, storageMode: .shared)
+        }
+        
+        guard let texture else {
             return nil
         }
         
@@ -229,12 +239,22 @@ class VariableBlurMetal {
         return texture
     }
     
-    private func makeOutputTexture(forImage image: CGImage) -> MTLTexture? {
+    private func makeOutputTexture(forImage image: CGImage, allowResusingTexture: Bool = true) -> MTLTexture? {
         guard let device else {
             return nil
         }
         
-        return MetalFunction.makeTexture(width: image.width, height: image.height, device: device, usage: .shaderWrite, storageMode: .shared)
+        let width = image.width
+        let height = image.height
+        
+        let texture: MTLTexture?
+        if let textureOut, textureOut.width == width, textureOut.height == height, allowResusingTexture {
+            texture = textureOut
+        } else {
+            texture = MetalFunction.makeTexture(width: width, height: height, device: device, usage: .shaderWrite, storageMode: .shared)
+        }
+        
+        return texture
     }
     
     private func makeImage(fromTexture texture: MTLTexture, width: Int, height: Int) -> CGImage? {
