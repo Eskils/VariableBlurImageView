@@ -51,7 +51,7 @@ let package = Package(
   dependencies: [
     .package(
       url: "https://github.com/Eskils/VariableBlurImageView", 
-      .upToNextMinor(from: "1.1.0") // or `.upToNextMajor
+      .upToNextMinor(from: "1.1.1") // or `.upToNextMajor
     )
   ],
   targets: [
@@ -240,8 +240,7 @@ When implementing a new blur type, new tests and generating methods need to be p
 - Provide a new method in *VariableBlurMetal.swift* to dispatch metal function
   - Functions are precompiled lazily 
   - Buffers are made lazily, to be reused
-  - A single texture is used for input/read and output/write. The texture is 2x width to account for this. Output is stored at `point.x + image.width``.
-  - The size of the input image is usually stored at index 4 in the kernel. This is in order to make reusable generic code.
+  - A kernel function has an input texture and an output texture.
   - You may use `variableBlurGeneric(_:image:bufferConfigurationHandler:)`.
 - Write a new method in *VariableBlurEngine.swift*
 - Write a new method in *VariableBlurImageView.swift*
