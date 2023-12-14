@@ -51,7 +51,7 @@ let package = Package(
   dependencies: [
     .package(
       url: "https://github.com/Eskils/VariableBlurImageView", 
-      .upToNextMinor(from: "1.1.0") // or `.upToNextMajor
+      .upToNextMinor(from: "1.1.1") // or `.upToNextMajor
     )
   ],
   targets: [
