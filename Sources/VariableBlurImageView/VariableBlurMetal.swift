@@ -25,7 +25,6 @@ class VariableBlurMetal {
     private lazy var multipleVariableBlurFunction   = tryPrecompileMetalFunction(withName: "multipleVariableBlur")
     
     // MARK: - Reusable buffers
-    lazy var sizeBuffer         = device?.makeBuffer(length: MemoryLayout<SIMD2<UInt16>>.size)
     lazy var startPoint1DBuffer = device?.makeBuffer(length: MemoryLayout<Float>.size)
     lazy var endPoint1DBuffer   = device?.makeBuffer(length: MemoryLayout<Float>.size)
     lazy var startPoint2DBuffer = device?.makeBuffer(length: MemoryLayout<SIMD2<Float>>.size)
@@ -48,12 +47,13 @@ class VariableBlurMetal {
     }
     
     private func variableBlurGeneric(_ function: MetalFunction?, image: CGImage, bufferConfigurationHandler: @escaping (MTLDevice, MTLComputeCommandEncoder) -> Void) throws -> CGImage {
-        guard let device, let sizeBuffer else {
+        guard let device else {
             throw MetalVariableBlurError.cannotCreateDevice
         }
         
         guard
-            let texture = makeInputOutputTexture(withImage: image)
+            let textureIn = makeInputTexture(withImage: image),
+            let textureOut = makeOutputTexture(forImage: image)
         else {
             throw MetalVariableBlurError.cannotMakeTexture
         }
@@ -75,15 +75,13 @@ class VariableBlurMetal {
             numWidth: width,
             numHeight: height
         ) { (commandEncoder, threadgroups) in
-            commandEncoder.setTexture(texture, index: 0)
-            
-            sizeBuffer.contents().assumingMemoryBound(to: SIMD2<UInt16>.self).pointee = SIMD2<UInt16>(x: UInt16(image.width), y: UInt16(image.height))
-            commandEncoder.setBuffer(sizeBuffer, offset: 0, index: 4)
+            commandEncoder.setTexture(textureIn, index: 0)
+            commandEncoder.setTexture(textureOut, index: 1)
             
             bufferConfigurationHandler(device, commandEncoder)
         }
         
-        guard let resultImage = makeImage(fromTexture: texture, width: width, height: height) else {
+        guard let resultImage = makeImage(fromTexture: textureOut, width: width, height: height) else {
             throw MetalVariableBlurError.cannotMakeFinalImage
         }
         
@@ -168,7 +166,7 @@ class VariableBlurMetal {
         }
         
         return try variableBlurGeneric(gradientVariableBlurFunction, image: image) { (device, commandEncoder) in
-            commandEncoder.setTexture(gradientTexture, index: 1)
+            commandEncoder.setTexture(gradientTexture, index: 2)
             
             // Max radius
             startRadiusBuffer.contents().assumingMemoryBound(to: Float.self).pointee = maxRadius
@@ -199,38 +197,6 @@ class VariableBlurMetal {
         }
     }
     
-    private func makeInputOutputTexture(withImage image: CGImage) -> MTLTexture? {
-        guard let device else {
-            return nil
-        }
-        
-        let width = image.width
-        let height = image.height
-        
-        guard let texture = MetalFunction.makeTexture(width: 2 * width, height: height, device: device) else {
-            return nil
-        }
-        
-        guard
-            let imageData = image.dataProvider?.data,
-            let imageBytes = CFDataGetBytePtr(imageData)
-        else {
-            return nil
-        }
-        
-        texture.replace(
-            region: MTLRegion(
-                origin: MTLOrigin(x: 0, y: 0, z: 0),
-                size: MTLSize(width: width, height: height, depth: 1)
-            ),
-            mipmapLevel: 0,
-            withBytes: imageBytes,
-            bytesPerRow: image.bytesPerRow
-        )
-        
-        return texture
-    }
-    
     private func makeInputTexture(withImage image: CGImage) -> MTLTexture? {
         guard let device else {
             return nil
@@ -239,7 +205,7 @@ class VariableBlurMetal {
         let width = image.width
         let height = image.height
         
-        guard let texture = MetalFunction.makeTexture(width: width, height: height, device: device) else {
+        guard let texture = MetalFunction.makeTexture(width: width, height: height, device: device, usage: .shaderRead, storageMode: .shared) else {
             return nil
         }
         
@@ -268,7 +234,7 @@ class VariableBlurMetal {
             return nil
         }
         
-        return MetalFunction.makeTexture(width: image.width, height: image.height, device: device)
+        return MetalFunction.makeTexture(width: image.width, height: image.height, device: device, usage: .shaderWrite, storageMode: .shared)
     }
     
     private func makeImage(fromTexture texture: MTLTexture, width: Int, height: Int) -> CGImage? {
@@ -293,7 +259,7 @@ class VariableBlurMetal {
             imageBytes,
             bytesPerRow: context.bytesPerRow,
             from: MTLRegion(
-                origin: MTLOrigin(x: width, y: 0, z: 0),
+                origin: MTLOrigin(x: 0, y: 0, z: 0),
                 size: MTLSize(width: width, height: height, depth: 1)
             ),
             mipmapLevel: 0

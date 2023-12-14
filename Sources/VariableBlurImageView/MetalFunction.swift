@@ -32,14 +32,14 @@ struct MetalFunction {
         return MetalFunction(commandQueue: commandQueue, pipelineState: pipelineState, maxThreads: maxThreads)
     }
     
-    static func makeTexture(width: Int, height: Int, device: MTLDevice) -> MTLTexture? {
+    static func makeTexture(width: Int, height: Int, device: MTLDevice, usage: MTLTextureUsage, storageMode: MTLStorageMode) -> MTLTexture? {
         let descriptor = MTLTextureDescriptor()
         descriptor.width = width
         descriptor.height = height
         descriptor.textureType = .type2D
         descriptor.pixelFormat = .rgba8Unorm
-        descriptor.storageMode = .shared
-        descriptor.usage = [.shaderRead, .shaderWrite]
+        descriptor.storageMode = storageMode
+        descriptor.usage = usage
         return device.makeTexture(descriptor: descriptor)
     }
     
