@@ -182,9 +182,16 @@ kernel void gradientVariableBlur(
     const float4 gradientValue = gradient.read(gradientGid);
     const half luma = ((half)gradientValue.x + (half)gradientValue.y + (half)gradientValue.z) / 3;
     
-    half radius = max(luma * (half)maxRadius, 1.0h);
+    half radius = luma * (half)maxRadius;
     
-    float4 colorOut = (float4)colorForBlurAtPixel(hGid, textureIn, radius);
+    float4 colorOut;
+    
+    if (radius >= 1.0h) {
+        colorOut = (float4)colorForBlurAtPixel(hGid, textureIn, radius);
+    } else {
+        colorOut = textureIn.read(gid);
+    }
+    
     
     textureOut.write(colorOut, gid);
 }
