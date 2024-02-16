@@ -10,7 +10,7 @@ final class VariableBlurImageViewTests: XCTestCase {
     
     let testsDirectory = URL(fileURLWithPath: #filePath + "/..").standardizedFileURL.path
     
-    let inputImageName = "GreenerOnTheOtherSide"
+    let inputImageName = "VariableBlurTestImage"
     
     func testVerticalVariableBlur() throws {
         XCTAssertTrue(
@@ -142,6 +142,25 @@ final class VariableBlurImageViewTests: XCTestCase {
     }
     
     func testGradientBlur() throws {
+        let gradientImage = try provideInputImage(inputImageName: "TestAlpha")
+        
+        XCTAssertTrue(
+            try isEqual(
+                inputImageName: inputImageName,
+                expectedImageName: "\(inputImageName)-GradientBlur-20",
+                afterPerformingImageOperations: { input in
+                    try variableBlurEngine.applyGradientVariableBlur(
+                        toImage: input,
+                        withGradient: gradientImage,
+                        maxRadius: 20
+                    )
+                }
+            )
+        )
+    }
+    
+    func testGradientBlurSmallImageForUnintendedBlur() throws {
+        let inputImageName = "VariableBlurTestImageSmall"
         let gradientImage = try provideInputImage(inputImageName: "TestAlpha")
         
         XCTAssertTrue(
